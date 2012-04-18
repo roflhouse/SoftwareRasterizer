@@ -17,20 +17,22 @@ int main(int argc, char *argv[])
 
    Tga::Tga file( width_of_image, height_of_image );
    Tga::pixel p;
-   p.r = 1;
-   p.g = 0;
+   p.r = 0;
+   p.g = 1;
    p.b = 0;
+   Tga::pixel **data = file.getBuffer();
 
-   for( int i = 0; i < 200; i++ ){
-      for( int j = 0; j < 200; j++ )
-         file.setPixel( i, j, p );
+   for( int i = 0; i < height_of_image; i++ ){
+      for( int j = 0; j < width_of_image; j++ )
+         data[i][j] = p;
    }
 
-   rasterize( mesh, file );
+   rasterize2( mesh, file );
 
    file.writeTga( "output.tga" );
 
-   printf("Image w%d h%d , %d %d %d\n", width_of_image, height_of_image, mesh.Triangles.size(), mesh.Vertices.size(), mesh.VerticesNormals.size() ); 
+   printf("Image w%d h%d , %d %d %d\n", width_of_image, height_of_image, mesh.Triangles.size(),
+         mesh.Vertices.size(), mesh.VerticesNormals.size() ); 
 
    return EXIT_SUCCESS;
 }

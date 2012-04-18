@@ -20,25 +20,38 @@
 #include "Tga.h"
 
 typedef struct {
+   //bottom left
    int xl;
    int yl;
+   //top right
    int xr;
    int yr;
 } BoundingBox;
 
 typedef struct {
+   float r;
+   float g;
+   float b;
+} Color;
+
+typedef struct {
    int a;
    int b;
    int c;
+   Color color;
 } Triangle;
 
 typedef struct {
-   float x;
-   float y;
-   float z;
+   int x;
+   int y;
+   int z;
 } Vertex;
 
+
 int rasterize( BasicModel &mesh, Tga &file );
+int rasterize2( BasicModel &mesh, Tga &file );
 int rasterizeCUDA( BasicModel &mesh, Tga &file );
-int boundingBoxHit( BoundingBox box, int ys, int xs );
-Triangle *createTriangles( BasicModel mesh, BoundingBox *boundingBoxes );
+Triangle *createTriangles( BasicModel &mesh, BoundingBox **boundingBoxes,
+       Vertex *screenVerts);
+void createBB( BoundingBox &box, const Triangle &triangle,  Vertex *verts );
+Vertex *convertVertices( BasicModel &mesh, int width, int height );
