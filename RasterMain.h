@@ -14,4 +14,11 @@
 #include <math.h>
 #include <string.h>
 #include <ctype.h>
+#include <sstream>
+#include <iostream>
+
 #include "Util/Tga.h"
+#include "Util/RasterizeFuncs.h"
+#include "NewMeshParser/BasicModel.h"
+
+char *parseCommandLine( int argc, char *argv[] );

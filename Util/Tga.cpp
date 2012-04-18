@@ -16,7 +16,12 @@ Tga::Tga(short int w, short int h)
     data = (pixel **) malloc( sizeof(pixel *) * height );
     for( int i = 0; i < height; i++ )
     {
-        data[i] = (pixel *) calloc( width, sizeof(pixel) );
+        data[i] = (pixel *) malloc( width * sizeof(pixel) );
+        for( int j = 0; j < width; j++ ){
+           data[i][j].r = 0;
+           data[i][j].b = 0;
+           data[i][j].g = 0;
+        }
     }
 }
 Tga::~Tga()
@@ -27,6 +32,18 @@ Tga::~Tga()
     }
     free( data );
     free( header );
+}
+Tga::pixel **Tga::getBuffer( )
+{
+   return data;
+}
+int Tga::getWidth( )
+{
+   return width;
+}
+int Tga::getHeight( )
+{
+   return height;
 }
 void Tga::setPixel( int w, int h, pixel p )
 {

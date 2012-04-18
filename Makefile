@@ -5,7 +5,7 @@ LD= g++
 CFLAGS= -g -Wall -c
 LDFLAGS= -g -Wall  
 
-ALL= RasterMain.o Util/Tga.o Util/Header.o NewMeshParser/BasicModel.o 
+ALL= RasterMain.o Util/Tga.o Util/Header.o NewMeshParser/BasicModel.o Util/RasterizeFuncs.o
 
 all:	$(ALL) rasterizer
 
@@ -16,6 +16,9 @@ RasterMain.o:	 RasterMain.cpp RasterMain.h
 	$(CC) $(CFLAGS) -o $@ $<
 
 Util/Tga.o:	 Util/Tga.cpp Util/Tga.h Util/Header.h
+	$(CC) $(CFLAGS) -o $@ $<
+
+Util/RasterizeFuncs.o:	 Util/RasterizeFuncs.cpp Util/RasterizeFuncs.h NewMeshParser/BasicModel.h NewMeshParser/Model.h Util/Tga.h
 	$(CC) $(CFLAGS) -o $@ $<
 
 Util/Header.o:	 Util/Header.cpp Util/Header.h 
