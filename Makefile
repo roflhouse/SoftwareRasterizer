@@ -2,8 +2,8 @@
 #  -------------------
 CC= g++
 LD= g++
-CFLAGS= -g -Wall -c
-LDFLAGS= -g -Wall  
+CFLAGS= -g -Wall -c -I "./glm"
+LDFLAGS= -g -Wall -I "./glm" 
 
 ALL= RasterMain.o Util/Tga.o Util/Header.o NewMeshParser/BasicModel.o Util/RasterizeFuncs.o
 

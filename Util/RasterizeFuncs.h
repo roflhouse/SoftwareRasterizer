@@ -18,6 +18,8 @@
 
 #include "../NewMeshParser/BasicModel.h"
 #include "Tga.h"
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 typedef struct {
    //bottom left

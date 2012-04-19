@@ -7,15 +7,21 @@
  *  @author Nick Feeney
  */
 #include "RasterMain.h"
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 int width_of_image;
 int height_of_image;
 
 int main(int argc, char *argv[])
 {
+   glm::mat4 transforms = glm::mat4(1.0f);
+   transforms = glm::translate(transforms, glm::vec3( 20, 0 , 0) );
+
    BasicModel::BasicModel mesh( parseCommandLine(argc, argv) );
 
    Tga::Tga file( width_of_image, height_of_image );
+
    Tga::pixel p;
    p.r = 0;
    p.g = 1;
@@ -27,12 +33,12 @@ int main(int argc, char *argv[])
          data[i][j] = p;
    }
 
-   rasterize2( mesh, file );
+   rasterize( mesh, file );
 
    file.writeTga( "output.tga" );
 
-   printf("Image w%d h%d , %d %d %d\n", width_of_image, height_of_image, mesh.Triangles.size(),
-         mesh.Vertices.size(), mesh.VerticesNormals.size() ); 
+   printf("Image w%d h%d , %d %d %d\n", width_of_image, height_of_image, (int)mesh.Triangles.size(),
+         (int)mesh.Vertices.size(), (int)mesh.VerticesNormals.size() ); 
 
    return EXIT_SUCCESS;
 }

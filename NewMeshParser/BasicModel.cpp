@@ -23,6 +23,7 @@ BasicModel::BasicModel(string filename)
    center.x = center.x/Vertices.size();
    center.y = center.y/Vertices.size();
    center.z = center.z/Vertices.size();
+   printf("%f %f %f %f\n", min_x, max_x, min_y, max_y );
 }
 
 BasicModel::~BasicModel()

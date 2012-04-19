@@ -5,7 +5,14 @@
 #include <stdio.h>
 
 class Model {
-
+   public:
+   Vector3 center;
+   float max_x;
+   float max_y;
+   float max_z;
+   float min_x;
+   float min_y;
+   float min_z;
 protected:
 
    // inner class to store triangle faces
@@ -28,16 +35,9 @@ protected:
    
 
 protected:
-   float max_x;
-   float max_y;
-   float max_z;
-   float min_x;
-   float min_y;
-   float min_z;
 
    float max_extent;
 
-   Vector3 center;
 
    // Parses the coordinates from the line in the following format
    //    Vertex <(ignored)> <x> <y> <z>
