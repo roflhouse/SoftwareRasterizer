@@ -40,7 +40,6 @@ typedef struct {
    int a;
    int b;
    int c;
-   Color color;
 } Triangle;
 
 typedef struct {
@@ -48,6 +47,12 @@ typedef struct {
    int y;
    int z;
 } Vertex;
+
+typedef struct {
+   float x;
+   float y;
+   float z;
+} Normal;
 
 
 int rasterize( BasicModel &mesh, Tga &file );
@@ -57,3 +62,7 @@ Triangle *createTriangles( BasicModel &mesh, BoundingBox **boundingBoxes,
        Vertex *screenVerts);
 void createBB( BoundingBox &box, const Triangle &triangle,  Vertex *verts );
 Vertex *convertVertices( BasicModel &mesh, int width, int height );
+Color calcLighting( Normal *normals, BasicModel &mesh, int v, Normal l );
+Normal normalize( Normal n );
+float dot( Normal n1, Normal n2 );
+Normal *createNormals( BasicModel &mesh, int n );

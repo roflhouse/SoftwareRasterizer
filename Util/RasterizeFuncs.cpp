@@ -8,17 +8,22 @@
  */
 
 #include "RasterizeFuncs.h"
+#include "../NewMeshParser/utils.h"
 #include <vector>
 
 int rasterize( BasicModel &mesh, Tga &file )
 {
+   Normal light;
+   light.x = 3;
+   light.y = 3;
+   light.z = 3;
    Tga::pixel **data = file.getBuffer();
    int width = file.getWidth();
    int height = file.getHeight();
    float depth[height][width];
    for( int i = 0; i < height; i++ )
       for( int j = 0; j < width; j++ )
-         depth[i][j] = 100000;
+         depth[i][j] = -100000;
    int tris = mesh.Triangles.size();
 
    //Converts mesh verts to screenspace
@@ -27,6 +32,8 @@ int rasterize( BasicModel &mesh, Tga &file )
    //printf("w: %d %d\n", vertices[1].x, vertices[2].y );
    BoundingBox *boundingBoxes;
    Triangle *triangles = createTriangles( mesh, &boundingBoxes, vertices );
+   Normal *normals = createNormals( mesh, (int)mesh.Vertices.size() );
+   printf("Number: %d\n", mesh.Vertices.size());
 
    for( int k = 0; k < tris; ++k )
    {
@@ -57,33 +64,96 @@ int rasterize( BasicModel &mesh, Tga &file )
             float beta = ((xa-xc)*(i-yc) - (j-xc)*(ya-yc))/((xb-xa)*(yc-ya) - (xc-xa)*(yb-ya));
             float gamma = ((xb-xa)*(i-ya) - (j-xa)*(yb-ya))/((xb-xa)*(yc-ya) - (xc-xa)*(yb-ya));
             float alpha;
-            //printf("i: %d j: %d, a: %f, %f %f %f %f %f\n", i, j, xa, ya, xb, yb, xc, yc );
-            //printf("i: %d j: %d, a: %f, %f %f  %f %f\n", i, j, alpha, beta, gamma, ((xa-xc)*(i-yc) - (j-xc)*(ya-yc)), ((xc-xa)*(yb-ya) - (xb-xa)*(yc-ya)) );
             if( beta+gamma <= 1 && beta >=0 && gamma >= 0 ){
                alpha = 1- beta -gamma;
             }
             else
                continue;
 
-            float depthTemp = alpha*vertices[triangles[k].a].z + beta*vertices[triangles[k].b].z + gamma*vertices[triangles[k].c].z;
-            if( depthTemp < depth[i][j] )
+            float depthTemp = mesh.Vertices[mesh.Triangles[k]->v1-1]->z *alpha+
+               mesh.Vertices[mesh.Triangles[k]->v2-1]->z *beta + mesh.Vertices[mesh.Triangles[k]->v3-1]->z *gamma;
+            //alpha*vertices[triangles[k].a].z + beta*vertices[triangles[k].b].z + gamma*vertices[triangles[k].c].z;
+            if( depthTemp > depth[i][j] )
             {
-               /*data[i][j].r = alpha*triangles[k].color.r + beta*triangles[k].color.r
-                 + gamma*triangles[k].color.r;
-                 data[i][j].g = alpha*triangles[k].color.g + beta*triangles[k].color.g
-                 + gamma*triangles[k].color.g;
-                 data[i][j].b = alpha*triangles[k].color.b + beta*triangles[k].color.b
-                 + gamma*triangles[k].color.b;
-                 */
-               data[i][j].r = alpha * 1 + beta * 0 + gamma * 0;
-               data[i][j].g = alpha * 0 + beta * 1 + gamma * 0;
-               data[i][j].b = alpha * 0 + beta * 0 + gamma * 1;
+               Color colorA = calcLighting( normals, mesh, triangles[k].a, light );
+               Color colorB = calcLighting( normals, mesh, triangles[k].b, light );
+               Color colorC = calcLighting( normals, mesh, triangles[k].c, light );
+
+               //data[i][j].r = alpha * colorA.r + beta * colorB.r + gamma * colorC.r;
+               //data[i][j].g = alpha * colorA.g + beta * colorB.g + gamma * colorC.g;
+               //data[i][j].b = alpha * colorA.b + beta * colorB.b + gamma * colorC.b;
+               data[i][j].r = colorA.r*alpha + colorB.r*beta + colorC.r*gamma;
+               data[i][j].g = colorA.g*alpha + colorB.g*beta + colorC.g*gamma;
+               data[i][j].b = colorA.b*alpha + colorB.b*beta+ colorC.b*gamma;
+               /*Normal li;
+               li.x = light.x - mesh.Vertices[mesh.Triangles[k]->v1-1]->x;
+               li.y = light.y - mesh.Vertices[mesh.Triangles[k]->v2-1]->y;
+               li.z = light.z - mesh.Vertices[mesh.Triangles[k]->v3-1]->z;
+               Normal n;
+               n.x = mesh.Triangles[k]->normal.x;
+               n.y = mesh.Triangles[k]->normal.y;
+               n.z = mesh.Triangles[k]->normal.z;
+               li = normalize(li);
+               float hh = dot( n, li );
+               if( hh < 0 )
+                  hh = 0;
+               if( hh > 1 )
+                  hh = 1;
+               data[i][j].r = hh*.8;
+               data[i][j].g = hh*.8;
+               data[i][j].b = hh*.8;
+               //printf("%f %f %f color\n", mesh.Vertices[triangles[0].a]->x, mesh.Vertices[triangles[0].a]->y, mesh.Vertices[triangles[0].a]->z);
+               //printf("%f %f %f color\n", data[i][j].r, data[i][j].g, data[i][j].b);
+*/
                depth[i][j] = depthTemp;
             }
          }
       }
    }
    return 0;
+}
+Color calcLighting( Normal *ns, BasicModel &mesh, int v, Normal l )
+{
+   Normal li;
+   Color ret;
+   li.x = l.x - mesh.Vertices[v]->x;
+   li.y = l.y - mesh.Vertices[v]->y;
+   li.z = l.z - mesh.Vertices[v]->z;
+   li = normalize( li );
+   Normal n = normalize( ns[v] );
+   float dotpro = dot( n, li );
+   if( dotpro < 0 )
+   {
+      ret.r = 0;
+      ret.g = 0;
+      ret.b = 0;
+   }
+   else if(dotpro > 1){
+      ret.r = .8;
+      ret.g = .8;
+      ret.b = .8;
+   }
+   else{
+      ret.r =  dotpro * .8;
+      ret.g =  dotpro * .8;
+      ret.b =  dotpro * .8;
+   }
+   //if( ret.r + ret.g +ret.b <= 0.001 )
+   ///   printf("NORMAL: %f %f %f %f\n", ns[v].x, ns[v].y, ns[v].z, dotpro);
+   return ret;
+}
+Normal normalize( Normal n )
+{
+   float total = n.x*n.x + n.y*n.y + n.z*n.z;
+   total = sqrt(total);
+   n.x = n.x/total;
+   n.y = n.y/total;
+   n.z = n.z/total;
+   return n;
+}
+float dot( Normal n1, Normal n2 )
+{
+   return n1.x*n2.x + n1.y*n2.y + n1.z*n2.z;
 }
 Triangle *createTriangles( BasicModel &mesh, BoundingBox **boundingBoxes, Vertex *screenVerts )
 {
@@ -115,7 +185,7 @@ void createBB( BoundingBox &box, const Triangle &triangle, Vertex *verts )
       box.xl = verts[triangle.b].x;
    if( box.yl > verts[triangle.b].y )
       box.yl = verts[triangle.b].y;
-   
+
    if( box.xl > verts[triangle.c].x )
       box.xl = verts[triangle.c].x;
    if( box.yl > verts[triangle.c].y )
@@ -142,7 +212,7 @@ Vertex *convertVertices( BasicModel &mesh, int width, int height )
    int i = 0;
    glm::mat4 transform = glm::scale( glm::mat4(1.0f), glm::vec3( 7,7, 0) );
    glm::vec4 cent = glm::vec4( (float)-mesh.center.x, (float)-mesh.center.y, 0.0, 1.0 );
-   transform = glm::translate( transform, glm::vec3( cent[0], cent[1], 0 ) ); 
+   transform = glm::translate( transform, glm::vec3( cent[0], cent[1], 0 ) );
    //glm::mat4 transform = glm::mat4(1.0f);
 
    for( it = mesh.Vertices.begin(); it < mesh.Vertices.end(); it++ )
@@ -152,9 +222,47 @@ Vertex *convertVertices( BasicModel &mesh, int width, int height )
 
       verts[i].x = ((width-1)/2) * p[0] + (width-1)/2;
       verts[i].y = ((height-1)/2) * p[1] + (height-1)/2;
-      verts[i].z = p[2]*width*height;
+      verts[i].z = p[2]*10000;
       //printf("putting %d: %d, %d, %d \n", i, verts[i].x, verts[i].y, verts[i].z);
       i++;
    }
    return verts;
+}
+Normal *createNormals( BasicModel &mesh, int num_verts )
+{
+   Normal *normals = (Normal *) malloc( sizeof(Normal) * num_verts );
+   //int numbers[num_verts];
+   for( int i = 0; i< num_verts; i++)
+   {
+      normals[i].x = 0;
+      normals[i].y = 0;
+      normals[i].z = 0;
+   }
+
+   for( unsigned int i = 0; i < mesh.Triangles.size(); i++ )
+   {
+      Vector3 tn = mesh.Triangles[i]->normal;
+      int a = mesh.Triangles[i]->v1-1;
+      int b = mesh.Triangles[i]->v2-1;
+      int c = mesh.Triangles[i]->v3-1;
+      normals[a].x += tn.x;
+      normals[a].y += tn.y;
+      normals[a].z += tn.z;
+      normals[b].x += tn.x;
+      normals[b].y += tn.y;
+      normals[b].z += tn.z;
+      normals[c].x += tn.x;
+      normals[c].y += tn.y;
+      normals[c].z += tn.z;
+      normals[a].x /= 2;
+      normals[a].y /= 2;
+      normals[a].z /= 2;
+      normals[b].x /= 2;
+      normals[b].y /= 2;
+      normals[b].z /= 2;
+      normals[c].x /= 2;
+      normals[c].y /= 2;
+      normals[c].z /= 2;
+   }
+   return normals;
 }
