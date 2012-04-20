@@ -73,20 +73,13 @@ int rasterize( BasicModel &mesh, Tga &file )
             else
                continue;
 
-            float depthTemp = mesh.Vertices[mesh.Triangles[k]->v1-1]->z *alpha+
-               mesh.Vertices[mesh.Triangles[k]->v2-1]->z *beta + mesh.Vertices[mesh.Triangles[k]->v3-1]->z *gamma;
+            float depthTemp = vertices[triangles[k].a].z *alpha+
+               vertices[triangles[k].b].z*beta + vertices[triangles[k].c].z *gamma;
             if( depthTemp > depth[i][j] )
             {
-               /*Color colorA = calcLighting( normals, mesh, triangles[k].a, light );
-               Color colorB = calcLighting( normals, mesh, triangles[k].b, light );
-               Color colorC = calcLighting( normals, mesh, triangles[k].c, light );
-               */
-
                data[i][j].r = colors[triangles[k].a].r*alpha + colors[triangles[k].b].r*beta + colors[triangles[k].c].r*gamma;
                data[i][j].g = colors[triangles[k].a].g*alpha + colors[triangles[k].b].g*beta + colors[triangles[k].c].g*gamma;
                data[i][j].b = colors[triangles[k].a].b*alpha + colors[triangles[k].b].b*beta + colors[triangles[k].c].b*gamma;
-               //data[i][j].g = colorA.g*alpha + colorB.g*beta + colorC.g*gamma;
-               //data[i][j].b = colorA.b*alpha + colorB.b*beta+ colorC.b*gamma;
                depth[i][j] = depthTemp;
             }
          }
@@ -211,7 +204,7 @@ Vertex *convertVertices( BasicModel &mesh, int width, int height )
 
       verts[i].x = ((width-1)/2) * p[0] + (width-1)/2;
       verts[i].y = ((height-1)/2) * p[1] + (height-1)/2;
-      verts[i].z = p[2]*10000;
+      verts[i].z = ((*it)->z);
       //printf("putting %d: %d, %d, %d \n", i, verts[i].x, verts[i].y, verts[i].z);
       i++;
    }

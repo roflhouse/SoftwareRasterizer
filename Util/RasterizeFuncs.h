@@ -45,7 +45,7 @@ typedef struct {
 typedef struct {
    int x;
    int y;
-   int z;
+   float z;
 } Vertex;
 
 typedef struct {
