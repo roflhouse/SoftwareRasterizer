@@ -66,3 +66,4 @@ Color calcLighting( Normal *normals, BasicModel &mesh, int v, Normal l );
 Normal normalize( Normal n );
 float dot( Normal n1, Normal n2 );
 Normal *createNormals( BasicModel &mesh, int n );
+Color *createColors( BasicModel &mesh, Normal *normals, Normal light );

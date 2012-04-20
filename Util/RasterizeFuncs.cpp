@@ -32,10 +32,10 @@ int rasterize( BasicModel &mesh, Tga &file )
    //Converts mesh verts to screenspace
    Vertex *vertices = convertVertices( mesh, width, height );
 
-   //printf("w: %d %d\n", vertices[1].x, vertices[2].y );
    BoundingBox *boundingBoxes;
    Triangle *triangles = createTriangles( mesh, &boundingBoxes, vertices );
    Normal *normals = createNormals( mesh, (int)mesh.Vertices.size() );
+   Color *colors = createColors( mesh, normals, light ); 
    printf("Number: %d\n", mesh.Vertices.size());
 
    for( int k = 0; k < tris; ++k )
@@ -75,45 +75,33 @@ int rasterize( BasicModel &mesh, Tga &file )
 
             float depthTemp = mesh.Vertices[mesh.Triangles[k]->v1-1]->z *alpha+
                mesh.Vertices[mesh.Triangles[k]->v2-1]->z *beta + mesh.Vertices[mesh.Triangles[k]->v3-1]->z *gamma;
-            //alpha*vertices[triangles[k].a].z + beta*vertices[triangles[k].b].z + gamma*vertices[triangles[k].c].z;
             if( depthTemp > depth[i][j] )
             {
-               Color colorA = calcLighting( normals, mesh, triangles[k].a, light );
+               /*Color colorA = calcLighting( normals, mesh, triangles[k].a, light );
                Color colorB = calcLighting( normals, mesh, triangles[k].b, light );
                Color colorC = calcLighting( normals, mesh, triangles[k].c, light );
+               */
 
-               //data[i][j].r = alpha * colorA.r + beta * colorB.r + gamma * colorC.r;
-               //data[i][j].g = alpha * colorA.g + beta * colorB.g + gamma * colorC.g;
-               //data[i][j].b = alpha * colorA.b + beta * colorB.b + gamma * colorC.b;
-               data[i][j].r = colorA.r*alpha + colorB.r*beta + colorC.r*gamma;
-               data[i][j].g = colorA.g*alpha + colorB.g*beta + colorC.g*gamma;
-               data[i][j].b = colorA.b*alpha + colorB.b*beta+ colorC.b*gamma;
-               /*Normal li;
-               li.x = light.x - mesh.Vertices[mesh.Triangles[k]->v1-1]->x;
-               li.y = light.y - mesh.Vertices[mesh.Triangles[k]->v2-1]->y;
-               li.z = light.z - mesh.Vertices[mesh.Triangles[k]->v3-1]->z;
-               Normal n;
-               n.x = mesh.Triangles[k]->normal.x;
-               n.y = mesh.Triangles[k]->normal.y;
-               n.z = mesh.Triangles[k]->normal.z;
-               li = normalize(li);
-               float hh = dot( n, li );
-               if( hh < 0 )
-                  hh = 0;
-               if( hh > 1 )
-                  hh = 1;
-               data[i][j].r = hh*.8;
-               data[i][j].g = hh*.8;
-               data[i][j].b = hh*.8;
-               //printf("%f %f %f color\n", mesh.Vertices[triangles[0].a]->x, mesh.Vertices[triangles[0].a]->y, mesh.Vertices[triangles[0].a]->z);
-               //printf("%f %f %f color\n", data[i][j].r, data[i][j].g, data[i][j].b);
-*/
+               data[i][j].r = colors[triangles[k].a].r*alpha + colors[triangles[k].b].r*beta + colors[triangles[k].c].r*gamma;
+               data[i][j].g = colors[triangles[k].a].g*alpha + colors[triangles[k].b].g*beta + colors[triangles[k].c].g*gamma;
+               data[i][j].b = colors[triangles[k].a].b*alpha + colors[triangles[k].b].b*beta + colors[triangles[k].c].b*gamma;
+               //data[i][j].g = colorA.g*alpha + colorB.g*beta + colorC.g*gamma;
+               //data[i][j].b = colorA.b*alpha + colorB.b*beta+ colorC.b*gamma;
                depth[i][j] = depthTemp;
             }
          }
       }
    }
    return 0;
+}
+Color *createColors( BasicModel &mesh, Normal *normals, Normal light )
+{
+   Color *colors = (Color *) malloc( sizeof(Color) * mesh.Vertices.size() );
+   for( int i = 0; i < mesh.Vertices.size(); i++ )
+   {
+      colors[i] = calcLighting( normals, mesh, i, light );
+   }
+   return colors;
 }
 Color calcLighting( Normal *ns, BasicModel &mesh, int v, Normal l )
 {
@@ -141,8 +129,6 @@ Color calcLighting( Normal *ns, BasicModel &mesh, int v, Normal l )
       ret.g =  dotpro * .8;
       ret.b =  dotpro * .8;
    }
-   //if( ret.r + ret.g +ret.b <= 0.001 )
-   ///   printf("NORMAL: %f %f %f %f\n", ns[v].x, ns[v].y, ns[v].z, dotpro);
    return ret;
 }
 Normal normalize( Normal n )
