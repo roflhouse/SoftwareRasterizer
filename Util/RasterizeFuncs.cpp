@@ -20,10 +20,13 @@ int rasterize( BasicModel &mesh, Tga &file )
    Tga::pixel **data = file.getBuffer();
    int width = file.getWidth();
    int height = file.getHeight();
-   float depth[height][width];
+   float **depth = (float **) malloc(sizeof(float *) * height );
    for( int i = 0; i < height; i++ )
+   {
+      depth[i] = (float *) malloc( sizeof(float) * width);
       for( int j = 0; j < width; j++ )
          depth[i][j] = -100000;
+   }
    int tris = mesh.Triangles.size();
 
    //Converts mesh verts to screenspace
