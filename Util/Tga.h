@@ -17,15 +17,10 @@
 #include <fstream>
 
 #include "Header.h"
+#include "Types.h"
 class Tga
 {
     public:
-        typedef struct {
-           float r;
-           float g;
-           float b;
-        } pixel;
-
         Tga( short int w, short int h );
         ~Tga();
         int writeTga(std::string filename);

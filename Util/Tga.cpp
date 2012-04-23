@@ -33,7 +33,7 @@ Tga::~Tga()
     free( data );
     free( header );
 }
-Tga::pixel **Tga::getBuffer( )
+pixel **Tga::getBuffer( )
 {
    return data;
 }

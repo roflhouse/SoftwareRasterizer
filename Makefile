@@ -1,11 +1,11 @@
 #  CPE 453
 #  -------------------
-CC= g++
-LD= g++
-CFLAGS= -g -Wall -c -I "./glm"
-LDFLAGS= -g -Wall -I "./glm" 
+CC= nvcc 
+LD= nvcc 
+CFLAGS= -G -g -arch=compute_20 -code=sm_20 -c -I "./glm" 
+LDFLAGS= -G -g -arch=compute_20 -code=sm_20  -I "./glm" 
 
-ALL= RasterMain.o Util/Tga.o Util/Header.o NewMeshParser/BasicModel.o Util/RasterizeFuncs.o
+ALL= RasterMain.o Util/Tga.o Util/Header.o NewMeshParser/BasicModel.o Util/RasterizeFuncs.o Util/RasterizeHelpers.o
 
 all:	$(ALL) rasterizer
 
@@ -18,7 +18,10 @@ RasterMain.o:	 RasterMain.cpp RasterMain.h
 Util/Tga.o:	 Util/Tga.cpp Util/Tga.h Util/Header.h
 	$(CC) $(CFLAGS) -o $@ $<
 
-Util/RasterizeFuncs.o:	 Util/RasterizeFuncs.cpp Util/RasterizeFuncs.h NewMeshParser/BasicModel.h NewMeshParser/Model.h Util/Tga.h
+Util/RasterizeFuncs.o:	 Util/RasterizeFuncs.cu Util/RasterizeFuncs.h NewMeshParser/BasicModel.h NewMeshParser/Model.h Util/Tga.h
+	$(CC) $(CFLAGS) -o $@ $<
+
+Util/RasterizeHelpers.o:	 Util/RasterizeHelpers.cpp Util/RasterizeHelpers.h NewMeshParser/BasicModel.h NewMeshParser/Model.h Util/Tga.h
 	$(CC) $(CFLAGS) -o $@ $<
 
 Util/Header.o:	 Util/Header.cpp Util/Header.h 
