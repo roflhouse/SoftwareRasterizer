@@ -18,15 +18,15 @@ int main(int argc, char *argv[])
    glm::mat4 transforms = glm::mat4(1.0f);
    transforms = glm::translate(transforms, glm::vec3( 20, 0 , 0) );
 
-   BasicModel::BasicModel mesh( parseCommandLine(argc, argv) );
+   BasicModel mesh( parseCommandLine(argc, argv) );
 
-   Tga::Tga file( width_of_image, height_of_image );
+   Tga file( width_of_image, height_of_image );
 
-   Tga::pixel p;
+   pixel p;
    p.r = 0;
    p.g = 1;
    p.b = 0;
-   Tga::pixel **data = file.getBuffer();
+   pixel **data = file.getBuffer();
 
    for( int i = 0; i < height_of_image; i++ ){
       for( int j = 0; j < width_of_image; j++ )
