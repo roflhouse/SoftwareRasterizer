@@ -25,12 +25,12 @@ class Tga
         ~Tga();
         int writeTga(std::string filename);
         void setPixel(int width, int height, pixel p);
-        void setPixels( int width, int height, pixel **p);
-        pixel **getBuffer( );
+        void setPixels( int width, int height, pixel *p);
+        pixel *getBuffer( );
         int getWidth();
         int getHeight();
     private:
-        pixel **data;
+        pixel *data;
         Header *header;
         short int width;
         short int height;

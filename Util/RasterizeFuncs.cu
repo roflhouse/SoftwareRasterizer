@@ -21,8 +21,9 @@
    } }
 
 
-__global__ void rasterizeCUDA_Dev( int width, int height, int num_tri, pixel *data, Vertex *vertices,
-      Triangle *triangles, BoundingBox *boundingBoxes, Color *colors, double *depth, unsigned int *mutex )
+__global__ void rasterizeCUDA_Dev( int width, int height, int offx, int offy, int num_tri, pixel *data,
+      Vertex *vertices, Triangle *triangles, BoundingBox *boundingBoxes, Color *colors,
+      float *depth, unsigned int *mutex )
 {
    int triIndex = blockIdx.x * gridDim.x + blockIdx.y;
    if( triIndex >= num_tri )
@@ -79,22 +80,22 @@ __global__ void rasterizeCUDA_Dev( int width, int height, int num_tri, pixel *da
    for( int m = 0; m < x_tile; m++ )
    {
       int j = TILE_WIDTH * m + threadIdx.x + box.xl;
-      if( j >= width )
+      if( j >= width || j + offx >= width )
       {
          break;
       }
-      if( j < 0 )
+      if( j < 0  || j + offx < 0)
       {
          continue;
       }
       for( int n = 0; n < y_tile; n++ )
       {
          int i = TILE_WIDTH * n + threadIdx.y + box.yl;
-         if( i >= height )
+         if( i >= height || i + offy >= height )
          {
             break;
          }
-         if( i < 0 )
+         if( i < 0 || i + offy < 0 )
          {
             continue;
          }
@@ -121,15 +122,15 @@ __global__ void rasterizeCUDA_Dev( int width, int height, int num_tri, pixel *da
          pix.r = a_c.r*alpha + b_c.r*beta + c_c.r*gamma;
          pix.g = a_c.g*alpha + b_c.g*beta + c_c.g*gamma;
          pix.b = a_c.b*alpha + b_c.b*beta + c_c.b*gamma;
-         if( depthTemp > depth[i*width + j] )
+         if( depthTemp > depth[(offy+i)*width + j+offx] )
          {
-            while( atomicInc( &(mutex[i*width + j]), 1 ) ){};
-            if( depthTemp > depth[i*width + j] )
+            while( atomicInc( &(mutex[(i+offy)*width + j + offx]), 1 ) ){};
+            if( depthTemp > depth[(i+offy)*width + j+offx] )
             {
-               depth[i*width + j] = depthTemp;
-               data[i*width + j] = pix;
+               depth[(i+offy)*width + j + offx ] = depthTemp;
+               data[(i+offy)*width + j + offx] = pix;
             }
-            atomicDec( &(mutex[i*width + j]), 0 );
+            atomicDec( &(mutex[(offy+i)*width + j +offx]), 0 );
          }
       }
    }
@@ -140,10 +141,11 @@ int rasterize( BasicModel &mesh, Tga &file )
    light.x = 3;
    light.y = 3;
    light.z = 3;
-   pixel **data = file.getBuffer();
+   pixel *data = file.getBuffer();
    int width = file.getWidth();
    int height = file.getHeight();
-   double *depth = (double*) malloc(sizeof(double) * width * height );
+   float *depth;
+   CUDASAFECALL(cudaMallocHost((void **)&depth,sizeof(float) * width * height ));
    for( int i = 0; i < height; i++ )
       for( int j = 0; j < width; j++ )
          depth[width * i +j] = -100000;
@@ -162,35 +164,27 @@ int rasterize( BasicModel &mesh, Tga &file )
    Triangle *d_tri;
    BoundingBox *d_box;
    Color *d_color;
-   double *d_depth;
+   float *d_depth;
    unsigned int *d_mutex;
    pixel *d_data;
-   pixel *temp;
 
-   temp = (pixel *) malloc( sizeof(pixel) * width * height );
-   for( int i = 0; i < height; i++ )
-      for( int j = 0; j < width; j++ )
-         temp[i*width + j] = data[i][j];
-
-   //malloc all the data;
-   CUDASAFECALL(cudaMalloc( (void **)&d_depth, sizeof(double) * width * height ));
+   CUDASAFECALL(cudaMalloc( (void **)&d_depth, sizeof(float) * width * height ));
    CUDASAFECALL(cudaMalloc( (void **)&d_vert, sizeof(Vertex) * mesh.Vertices.size() ));
    CUDASAFECALL(cudaMalloc( (void **)&d_tri, sizeof(Triangle) * tris )  );
    CUDASAFECALL(cudaMalloc( (void **)&d_box, sizeof(BoundingBox) * tris ));
+   CUDASAFECALL(cudaMalloc( (void **)&d_data, sizeof(pixel) * width * height ) );
    CUDASAFECALL(cudaMalloc( (void **)&d_color, sizeof(Color) * mesh.Vertices.size() ));
    CUDASAFECALL(cudaMalloc( (void **)&d_mutex, sizeof(unsigned int) * width * height ));
-   CUDASAFECALL(cudaMalloc( (void **)&d_data, sizeof(pixel) * width * height ) );
 
-   //Zero the mutexes
-   CUDASAFECALL(cudaMemset( d_mutex, 0, width * height * sizeof(unsigned int)));
+   CUDASAFECALL(cudaMemcpyAsync( d_depth, depth, sizeof(float) * width * height, cudaMemcpyHostToDevice ));
+   CUDASAFECALL(cudaMemcpyAsync( d_vert, vertices, sizeof(Vertex) * mesh.Vertices.size(), cudaMemcpyHostToDevice ));
+   CUDASAFECALL(cudaMemcpyAsync( d_tri, triangles, sizeof(Triangle) *tris, cudaMemcpyHostToDevice ));
+   CUDASAFECALL(cudaMemcpyAsync( d_box, boundingBoxes, sizeof(BoundingBox) * tris, cudaMemcpyHostToDevice ));
+   CUDASAFECALL(cudaMemcpyAsync( d_data, data, sizeof(pixel) * width*height, cudaMemcpyHostToDevice));
+   CUDASAFECALL(cudaMemcpyAsync( d_color, colors, sizeof(Color) * mesh.Vertices.size(), cudaMemcpyHostToDevice ));
+   CUDASAFECALL(cudaMemsetAsync( d_mutex, 0, width * height * sizeof(unsigned int)));
 
-   //copy over all the data;
-   CUDASAFECALL(cudaMemcpy( d_data, temp, sizeof(pixel) * width*height, cudaMemcpyHostToDevice));
-   CUDASAFECALL(cudaMemcpy( d_depth, depth, sizeof(double) * width * height, cudaMemcpyHostToDevice ));
-   CUDASAFECALL(cudaMemcpy( d_vert, vertices, sizeof(Vertex) * mesh.Vertices.size(), cudaMemcpyHostToDevice ));
-   CUDASAFECALL(cudaMemcpy( d_tri, triangles, sizeof(Triangle) *tris, cudaMemcpyHostToDevice ));
-   CUDASAFECALL(cudaMemcpy( d_box, boundingBoxes, sizeof(BoundingBox) * tris, cudaMemcpyHostToDevice ));
-   CUDASAFECALL(cudaMemcpy( d_color, colors, sizeof(Color) * mesh.Vertices.size(), cudaMemcpyHostToDevice ));
+   cudaDeviceSynchronize();
 
    unsigned int x;
    x = sqrt( tris );
@@ -200,12 +194,18 @@ int rasterize( BasicModel &mesh, Tga &file )
    dim3 dimGrid( x, x );
 
    printf("Starting Kernel\n");
-   rasterizeCUDA_Dev<<< dimGrid, dimBlock >>>(width, height, tris, d_data, d_vert,
-         d_tri, d_box, d_color, d_depth, d_mutex );
-   printf("Ending Kernel\n");
+   for( int i = 0; i < 5; i++ )
+   {
+      for( int j = 0; j < 5; j++ )
+      {
+         rasterizeCUDA_Dev<<< dimGrid, dimBlock >>>(width, height,width/5 * i, height/5 * j, tris, d_data, d_vert,
+               d_tri, d_box, d_color, d_depth, d_mutex );
+      }
+   }
    CUDAERRORCHECK();
 
-   CUDASAFECALL(cudaMemcpy( temp, d_data, sizeof(pixel) * width * height, cudaMemcpyDeviceToHost ));
+   CUDASAFECALL(cudaMemcpy( data, d_data, sizeof(pixel) * width * height, cudaMemcpyDeviceToHost ));
+   printf("Ending Kernel\n");
    cudaFree( d_vert );
    cudaFree( d_tri );
    cudaFree( d_box );
@@ -214,10 +214,7 @@ int rasterize( BasicModel &mesh, Tga &file )
    cudaFree( d_data );
    cudaFree( d_depth );
 
-   for( int i = 0; i < height; i++ )
-      for( int j = 0; j < width; j++ )
-         data[i][j] = temp[i*width + j];
-   free(temp);
+   cudaFreeHost(depth);
 
    return 0;
 }

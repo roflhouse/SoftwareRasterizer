@@ -13,27 +13,22 @@ Tga::Tga(short int w, short int h)
     width = w;
     height = h;
     header = new Header( width, height );
-    data = (pixel **) malloc( sizeof(pixel *) * height );
+    data = (pixel *) malloc( sizeof(pixel) * height * width );
     for( int i = 0; i < height; i++ )
     {
-        data[i] = (pixel *) malloc( width * sizeof(pixel) );
         for( int j = 0; j < width; j++ ){
-           data[i][j].r = 0;
-           data[i][j].b = 0;
-           data[i][j].g = 0;
+           data[i*width + j].r = 0;
+           data[i*width + j].b = 0;
+           data[i*width + j].g = 0;
         }
     }
 }
 Tga::~Tga()
 {
-    for( int i = 0; i < height; i++ )
-    {
-        free( data[i] );
-    }
     free( data );
     free( header );
 }
-pixel **Tga::getBuffer( )
+pixel *Tga::getBuffer( )
 {
    return data;
 }
@@ -47,9 +42,9 @@ int Tga::getHeight( )
 }
 void Tga::setPixel( int w, int h, pixel p )
 {
-    data[h][w] = p;
+    data[h*width + w] = p;
 }
-void Tga::setPixels( int w, int h, pixel **p ){
+void Tga::setPixels( int w, int h, pixel *p ){
    if( w != width || h != height )
    {
       printf("Error setPixels missmatch with width %d: %d, height %d: %d\n", width, w, height, h );
@@ -57,7 +52,7 @@ void Tga::setPixels( int w, int h, pixel **p ){
    }
    for( int i = 0; i < h; i++ ){
       for( int j = 0; j < w; j++ ){
-         data[i][j] = p[i][j];
+         data[i*width + j] = p[i*width + j];
       }
    }
 }
@@ -82,9 +77,9 @@ int Tga::writeTga( std::string filename )
                 data[i][j].b = 1.0;
                 */
 
-            unsigned int red = data[i][j].r * 255;
-            unsigned int green = data[i][j].g * 255;
-            unsigned int blue = data[i][j].b * 255;
+            unsigned int red = data[i*width + j].r * 255;
+            unsigned int green = data[i*width + j].g * 255;
+            unsigned int blue = data[i*width + j].b * 255;
             outfile.write( reinterpret_cast<char*>(&(blue)), sizeof(char) );
             outfile.write( reinterpret_cast<char*>(&(green)), sizeof(char) );
             outfile.write( reinterpret_cast<char*>(&(red)), sizeof(char) );

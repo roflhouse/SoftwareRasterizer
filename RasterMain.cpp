@@ -26,11 +26,11 @@ int main(int argc, char *argv[])
    p.r = 0;
    p.g = 1;
    p.b = 0;
-   pixel **data = file.getBuffer();
+   pixel *data = file.getBuffer();
 
    for( int i = 0; i < height_of_image; i++ ){
       for( int j = 0; j < width_of_image; j++ )
-         data[i][j] = p;
+         data[i*file.getWidth() + j] = p;
    }
 
    rasterize( mesh, file );

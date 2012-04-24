@@ -2,8 +2,8 @@
 #  -------------------
 CC= nvcc 
 LD= nvcc 
-CFLAGS= -G -g -arch=compute_20 -code=sm_20 -c -I "./glm" 
-LDFLAGS= -G -g -arch=compute_20 -code=sm_20  -I "./glm" 
+CFLAGS= -O3 -arch=compute_20 -code=sm_20 -c -I "./glm" 
+LDFLAGS= -O3 -G -arch=compute_20 -code=sm_20  -I "./glm" 
 
 ALL= RasterMain.o Util/Tga.o Util/Header.o NewMeshParser/BasicModel.o Util/RasterizeFuncs.o Util/RasterizeHelpers.o
 
