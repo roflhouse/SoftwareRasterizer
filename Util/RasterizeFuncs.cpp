@@ -15,12 +15,6 @@ int rasterize( BasicModel &mesh, Tga &file )
 {
    int width = file.getWidth();
    int height = file.getHeight();
-   for( int ii = 0; ii < 5; ii++ )
-   {
-      int offx = width/5 *ii;
-      for( int jj = 0; jj < 5; jj++ )
-      {
-         int offy = height/5 *jj; 
    Normal light;
    light.x = 3;
    light.y = 3;
@@ -45,6 +39,12 @@ int rasterize( BasicModel &mesh, Tga &file )
    printf("Number: %d\n", mesh.Vertices.size());
 
 
+   for( int ii = 0; ii < 5; ii++ )
+   {
+      int offx = width/5 *ii;
+      for( int jj = 0; jj < 5; jj++ )
+      {
+         int offy = height/5 *jj; 
    for( int k = 0; k < tris; ++k )
    {
       for( int j = boundingBoxes[k].xl; j <= boundingBoxes[k].xr; ++j )
