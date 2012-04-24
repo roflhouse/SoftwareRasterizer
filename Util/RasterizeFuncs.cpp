@@ -13,13 +13,19 @@
 
 int rasterize( BasicModel &mesh, Tga &file )
 {
+   int width = file.getWidth();
+   int height = file.getHeight();
+   for( int ii = 0; ii < 5; ii++ )
+   {
+      int offx = width/5 *ii;
+      for( int jj = 0; jj < 5; jj++ )
+      {
+         int offy = height/5 *jj; 
    Normal light;
    light.x = 3;
    light.y = 3;
    light.z = 3;
    Tga::pixel **data = file.getBuffer();
-   int width = file.getWidth();
-   int height = file.getHeight();
    float **depth = (float **) malloc(sizeof(float *) * height );
    for( int i = 0; i < height; i++ )
    {
@@ -38,22 +44,23 @@ int rasterize( BasicModel &mesh, Tga &file )
    Color *colors = createColors( mesh, normals, light ); 
    printf("Number: %d\n", mesh.Vertices.size());
 
+
    for( int k = 0; k < tris; ++k )
    {
       for( int j = boundingBoxes[k].xl; j <= boundingBoxes[k].xr; ++j )
       {
-         if( j >= width)
+         if( j >= width || j + offx >= width)
             break;
-         if( j < 0 )
+         if( j < 0 || j + offx < 0 )
          {
             j=-1;
             continue;
          }
          for( int i = boundingBoxes[k].yl; i <= boundingBoxes[k].yr; ++i )
          {
-            if( i >= height)
+            if( i >= height || i + offy >= height)
                break;
-            if( i < 0 )
+            if( i < 0 || i + offy < 0  )
             {
                i = -1;
                continue;
@@ -75,14 +82,16 @@ int rasterize( BasicModel &mesh, Tga &file )
 
             float depthTemp = vertices[triangles[k].a].z *alpha+
                vertices[triangles[k].b].z*beta + vertices[triangles[k].c].z *gamma;
-            if( depthTemp > depth[i][j] )
+            if( depthTemp > depth[i+offy][j+offx] )
             {
-               data[i][j].r = colors[triangles[k].a].r*alpha + colors[triangles[k].b].r*beta + colors[triangles[k].c].r*gamma;
-               data[i][j].g = colors[triangles[k].a].g*alpha + colors[triangles[k].b].g*beta + colors[triangles[k].c].g*gamma;
-               data[i][j].b = colors[triangles[k].a].b*alpha + colors[triangles[k].b].b*beta + colors[triangles[k].c].b*gamma;
-               depth[i][j] = depthTemp;
+               data[i+offy][j+offx].r = colors[triangles[k].a].r*alpha + colors[triangles[k].b].r*beta + colors[triangles[k].c].r*gamma;
+               data[i+offy][j+offx].g = colors[triangles[k].a].g*alpha + colors[triangles[k].b].g*beta + colors[triangles[k].c].g*gamma;
+               data[i+offy][j+offx].b = colors[triangles[k].a].b*alpha + colors[triangles[k].b].b*beta + colors[triangles[k].c].b*gamma;
+               depth[i+offy][j+offx] = depthTemp;
             }
          }
+      }
+   }
       }
    }
    return 0;
@@ -192,9 +201,10 @@ Vertex *convertVertices( BasicModel &mesh, int width, int height )
    Vertex *verts = (Vertex *) malloc(sizeof(Vertex) * mesh.Vertices.size());
    std::vector<Vector3 *>::iterator it;
    int i = 0;
-   glm::mat4 transform = glm::scale( glm::mat4(1.0f), glm::vec3( 7,7, 0) );
+   glm::mat4 transform = glm::scale( glm::mat4(1.0f), glm::vec3( 2.7,2.7, 0) );
    glm::vec4 cent = glm::vec4( (float)-mesh.center.x, (float)-mesh.center.y, 0.0, 1.0 );
    transform = glm::translate( transform, glm::vec3( cent[0], cent[1], 0 ) );
+   transform = glm::translate( transform, glm::vec3( -0.3, -0.3, 0 ) );
    //glm::mat4 transform = glm::mat4(1.0f);
 
    for( it = mesh.Vertices.begin(); it < mesh.Vertices.end(); it++ )
