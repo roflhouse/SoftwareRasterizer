@@ -22,17 +22,6 @@ int main(int argc, char *argv[])
 
    Tga file( width_of_image, height_of_image );
 
-   pixel p;
-   p.r = 0;
-   p.g = 1;
-   p.b = 0;
-   pixel *data = file.getBuffer();
-
-   for( int i = 0; i < height_of_image; i++ ){
-      for( int j = 0; j < width_of_image; j++ )
-         data[i*file.getWidth() + j] = p;
-   }
-
    rasterize( mesh, file );
 
    file.writeTga( "output.tga" );
