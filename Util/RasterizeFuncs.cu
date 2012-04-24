@@ -70,14 +70,14 @@ __global__ void rasterizeCUDA_Dev( int width, int height, int offx, int offy, in
    int pxIdx, i, j;
    int bb_size = width_bb * height_bb;
    int loop = bb_size / TILE_WIDTH;
-   if( loop < (float)bb_size / (float)TILE_WIDTH)
+   if( loop < ((float)bb_size) / ((float)TILE_WIDTH))
       loop++;
 
    for( int n = 0; n < loop; n++ )
    {
-      pxIdx = threadIdx.x + n * TILE_WIDTH;
+      pxIdx = n + threadIdx.x * loop;
 
-      if( pxIdx > bb_size)
+      if( pxIdx >= bb_size)
          return;
 
       i = pxIdx / width_bb + box.yl;
