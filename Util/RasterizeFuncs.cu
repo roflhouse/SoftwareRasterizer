@@ -106,17 +106,17 @@ __global__ void rasterizeCUDA_Dev( int width, int height, int offx, int offy, in
             continue;
          }
          //These are alot of shared mem accesses but less registers. Could use register might be faster
-         double beta = (double)((a.x-c.x)*(i-c.y) - (j-c.x)*(a.y-c.y))
-            /(double)((b.x-a.x)*(c.y-a.y) - (c.x-a.x)*(b.y-a.y));
-         double gamma = (double)((b.x-a.x)*(i-a.y) - (j-a.x)*(b.y-a.y))/
-            (double)((b.x-a.x)*(c.y-a.y) - (c.x-a.x)*(b.y-a.y));
-         double alpha;
+         float beta = (float)((a.x-c.x)*(i-c.y) - (j-c.x)*(a.y-c.y))
+            /(float)((b.x-a.x)*(c.y-a.y) - (c.x-a.x)*(b.y-a.y));
+         float gamma = (float)((b.x-a.x)*(i-a.y) - (j-a.x)*(b.y-a.y))/
+            (float)((b.x-a.x)*(c.y-a.y) - (c.x-a.x)*(b.y-a.y));
+         float alpha;
          if( beta+gamma <= 1.010 && beta >=-0.010 && gamma >= -0.010 )
             alpha = 1- beta -gamma;
          else
             continue;
 
-         double depthTemp = a.z * alpha + b.z * beta + c.z *gamma;
+         float depthTemp = a.z * alpha + b.z * beta + c.z *gamma;
          pix.r = a_c.r*alpha + b_c.r*beta + c_c.r*gamma;
          pix.g = a_c.g*alpha + b_c.g*beta + c_c.g*gamma;
          pix.b = a_c.b*alpha + b_c.b*beta + c_c.b*gamma;
