@@ -83,7 +83,7 @@ __global__ void rasterizeCUDA_Dev( int width, int height, int offx, int offy, in
       i = pxIdx / width_bb + box.yl;
       j = pxIdx % width_bb + box.xl;
 
-      if((i < 0 && i > height) || (j < 0 && j > width) || (i + offy > height) || (j + offx > width))
+      if((i < 0 && i >= height) || (j < 0 && j >= width) || (i + offy >= height) || (j + offx >= width))
          continue;
 
       //These are alot of shared mem accesses but less registers. Could use register might be faster
