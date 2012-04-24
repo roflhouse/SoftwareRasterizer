@@ -10,23 +10,23 @@
 
 Tga::Tga(short int w, short int h)
 {
-    width = w;
-    height = h;
-    header = new Header( width, height );
-    data = (pixel *) malloc( sizeof(pixel) * height * width );
-    for( int i = 0; i < height; i++ )
-    {
-        for( int j = 0; j < width; j++ ){
-           data[i*width + j].r = 0;
-           data[i*width + j].b = 0;
-           data[i*width + j].g = 0;
-        }
-    }
+   width = w;
+   height = h;
+   header = new Header( width, height );
+   data = (pixel *) malloc( sizeof(pixel) * height * width );
+   for( int i = 0; i < height; i++ )
+   {
+      for( int j = 0; j < width; j++ ){
+         data[i*width + j].r = 0;
+         data[i*width + j].b = 0;
+         data[i*width + j].g = 0;
+      }
+   }
 }
 Tga::~Tga()
 {
-    free( data );
-    free( header );
+   free( data );
+   free( header );
 }
 pixel *Tga::getBuffer( )
 {
@@ -42,7 +42,7 @@ int Tga::getHeight( )
 }
 void Tga::setPixel( int w, int h, pixel p )
 {
-    data[h*width + w] = p;
+   data[h*width + w] = p;
 }
 void Tga::setPixels( int w, int h, pixel *p ){
    if( w != width || h != height )
@@ -58,33 +58,51 @@ void Tga::setPixels( int w, int h, pixel *p ){
 }
 int Tga::writeTga( std::string filename )
 {
-    std::ofstream outfile(filename.c_str());
-    header->writeHeader( &outfile );
+   std::ofstream outfile(filename.c_str());
+   header->writeHeader( &outfile );
 
-    for( int i = 0; i < height; i++ )
-    {
-        for( int j = 0; j < width; j++ )
-        {
-            //Gamma Correction
-            /*data[i][j].r = pow( data[i][j].r, .7 );
-            data[i][j].b = pow( data[i][j].b, .7 );
-            data[i][j].g = pow( data[i][j].g, .7 );
-            if (data[i][j].r > 1.0)
-                data[i][j].r = 1.0;
-            if (data[i][j].g > 1.0)
-                data[i][j].g = 1.0;
-            if (data[i][j].b > 1.0)
-                data[i][j].b = 1.0;
-                */
+   for( int i = 0; i < height; i++ )
+   {
+      for( int j = 0; j < width; j++ )
+      {
+         //Gamma Correction
+         /*data[i][j].r = pow( data[i][j].r, .7 );
+           data[i][j].b = pow( data[i][j].b, .7 );
+           data[i][j].g = pow( data[i][j].g, .7 );
+           if (data[i][j].r > 1.0)
+           data[i][j].r = 1.0;
+           if (data[i][j].g > 1.0)
+           data[i][j].g = 1.0;
+           if (data[i][j].b > 1.0)
+           data[i][j].b = 1.0;
+          */
 
-            unsigned int red = data[i*width + j].r * 255;
-            unsigned int green = data[i*width + j].g * 255;
-            unsigned int blue = data[i*width + j].b * 255;
-            outfile.write( reinterpret_cast<char*>(&(blue)), sizeof(char) );
-            outfile.write( reinterpret_cast<char*>(&(green)), sizeof(char) );
-            outfile.write( reinterpret_cast<char*>(&(red)), sizeof(char) );
-        }
-    }
-    outfile.close();
-    return 0;
+         unsigned int red = data[i*width + j].r * 255;
+         unsigned int green = data[i*width + j].g * 255;
+         unsigned int blue = data[i*width + j].b * 255;
+         outfile.write( reinterpret_cast<char*>(&(blue)), sizeof(char) );
+         outfile.write( reinterpret_cast<char*>(&(green)), sizeof(char) );
+         outfile.write( reinterpret_cast<char*>(&(red)), sizeof(char) );
+      }
+   }
+   outfile.close();
+   return 0;
+}
+void Tga::readTga( std::string filename )
+{
+   std::ifstream infile( filename.c_str() );
+   char s[sizeof(Header)];
+   infile.read( s, sizeof(Header) );
+   for( int i = 0; i < height; i++ )
+   {
+      for( int j = 0; j < width; j++ )
+      {
+         infile.read( s, sizeof(char) );
+         data[i*width + j].r = (s[0] - '0')/255;
+         infile.read( s, sizeof(char) );
+         data[i*width + j].g = (s[0] - '0')/255;
+         infile.read( s, sizeof(char) );
+         data[i*width + j].g = (s[0] - '0')/255;
+      }
+   }
 }

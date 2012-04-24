@@ -24,6 +24,7 @@ class Tga
         Tga( short int w, short int h );
         ~Tga();
         int writeTga(std::string filename);
+        void readTga(std::string filename);
         void setPixel(int width, int height, pixel p);
         void setPixels( int width, int height, pixel *p);
         pixel *getBuffer( );
