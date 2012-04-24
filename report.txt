@@ -21,3 +21,4 @@ user  0m1.255s
 sys   0m0.217s
 
 CPU v. GPU error per pixel
+0.00034
