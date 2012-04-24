@@ -11,12 +11,8 @@
 #include "RasterizeHelpers.h"
 #include "../NewMeshParser/utils.h"
 #include <vector>
-#define CUDASAFECALL( call )  { \
-   cudaError err = call;        \
-   if( cudaSuccess != err ) {   \
-      printf("CudaSafeCall %d\n", err);   \
-      exit(1);                  \
-   } }
+#define CUDASAFECALL( call )  CUDA_SAFE_CALL( call )
+#include "cutil.h"
 #define CUDAERRORCHECK() {                   \
    cudaError err = cudaGetLastError();        \
    if( cudaSuccess != err){ \
