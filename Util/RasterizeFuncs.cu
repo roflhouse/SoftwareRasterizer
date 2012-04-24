@@ -51,7 +51,12 @@ __global__ void rasterizeCUDA_Dev( int width, int height, int offx, int offy, in
 
    __syncthreads();
    //Fill out all Vertex shared data;
-   if( threadIdx.y != 0 ){
+
+   if( threadIdx.x == 0 && threadIdx.y == 1 )
+      b_c = colors[triangle.b];
+   else if( threadIdx.x == 1 && threadIdx.y == 1 )
+      c_c = colors[triangle.c];
+   else if( threadIdx.y != 0 ){
       //do nothing
    }
    else if( threadIdx.x == 0 )
@@ -62,10 +67,6 @@ __global__ void rasterizeCUDA_Dev( int width, int height, int offx, int offy, in
       c = vertices[triangle.c];
    else if( threadIdx.x == 3 )
       a_c = colors[triangle.a];
-   else if( threadIdx.x == 4 )
-      b_c = colors[triangle.b];
-   else if( threadIdx.x == 5 )
-      c_c = colors[triangle.c];
    __syncthreads();
 
    width_bb = box.xr - box.xl;
@@ -188,11 +189,11 @@ int rasterize( BasicModel &mesh, Tga &file )
    CUDASAFECALL(cudaMalloc( (void **)&d_color, sizeof(Color) * mesh.Vertices.size() ));
    CUDASAFECALL(cudaMalloc( (void **)&d_mutex, sizeof(unsigned int) * width * height ));
 
-   int w = width / 16;
-   if( w < (float)width / 16.0 )
+   int w = width / TILE_WIDTH;
+   if( w < (float)width / (float)TILE_WIDTH )
       w++;
-   int h = height / 16;
-   if( h < (float)height / 16.0 )
+   int h = height / TILE_WIDTH;
+   if( h < (float)height / (float)TILE_WIDTH )
       h++;
    dim3 dimBlock1( TILE_WIDTH, TILE_WIDTH );
    dim3 dimGrid1( w, h );
