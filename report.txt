@@ -1,0 +1,7 @@
+Nick Feeney(ndfeeney) 
+Andrew Guenther(aguenthe)
+
+timing for CPU run 1 bunny 2000x2000
+timing for CPU run 25 bunny 2000x2000
+timing for GPU run 25 bunny 2000x2000
+CPU v. GPU error per pixel
