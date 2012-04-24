@@ -10,7 +10,8 @@
 #ifndef RASTERIZEFUNCS_H
 #define RASTERIZEFUNCS_H
 
-#define TILE_WIDTH 4 
+#define TILE_WIDTH 64 
+#define INIT_WIDTH 16
 
 #include <sys/types.h>
 #include <unistd.h>

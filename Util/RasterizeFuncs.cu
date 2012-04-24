@@ -44,22 +44,14 @@ __global__ void rasterizeCUDA_Dev( int width, int height, int offx, int offy, in
    __shared__ Color c_c;
 
    //Fill out all triangle shared data;
-   if( threadIdx.x == 0 && threadIdx.y == 0 )
+   if( threadIdx.x == 0)
       triangle = triangles[triIndex];
-   else if (threadIdx.x == 1 && threadIdx.y == 0 )
+   else if (threadIdx.x == 1)
       box = boundingBoxes[triIndex];
 
    __syncthreads();
    //Fill out all Vertex shared data;
-
-   if( threadIdx.x == 0 && threadIdx.y == 1 )
-      b_c = colors[triangle.b];
-   else if( threadIdx.x == 1 && threadIdx.y == 1 )
-      c_c = colors[triangle.c];
-   else if( threadIdx.y != 0 ){
-      //do nothing
-   }
-   else if( threadIdx.x == 0 )
+   if( threadIdx.x == 0 )
       a = vertices[triangle.a];
    else if( threadIdx.x == 1 )
       b = vertices[triangle.b];
@@ -67,75 +59,63 @@ __global__ void rasterizeCUDA_Dev( int width, int height, int offx, int offy, in
       c = vertices[triangle.c];
    else if( threadIdx.x == 3 )
       a_c = colors[triangle.a];
+   else if( threadIdx.x == 4)
+      b_c = colors[triangle.b];
+   else if( threadIdx.x == 5)
+      c_c = colors[triangle.c];
    __syncthreads();
 
    width_bb = box.xr - box.xl;
    height_bb = box.yr - box.yl;
-   int x_tile = width_bb / TILE_WIDTH;
-   int y_tile = height_bb / TILE_WIDTH;
-   if( width_bb % TILE_WIDTH )
-      x_tile++;
-   if( height_bb % TILE_WIDTH )
-      y_tile++;
+   int pxIdx, i, j;
+   int bb_size = width_bb * height_bb;
+   int loop = bb_size / TILE_WIDTH;
+   if( loop < (float)bb_size / (float)TILE_WIDTH)
+      loop++;
 
-   for( int n = 0; n < y_tile; n++ )
+   for( int n = 0; n < loop; n++ )
    {
-      int i = TILE_WIDTH * n + threadIdx.y + box.yl;
-      if( i >= height || i + offy >= height )
-      {
-         break;
-      }
-      if( i < 0 || i + offy < 0 )
-      {
+      pxIdx = threadIdx.x + n * TILE_WIDTH;
+
+      if( pxIdx > bb_size)
+         return;
+
+      i = pxIdx / width_bb + box.yl;
+      j = pxIdx % width_bb + box.xl;
+
+      if((i < 0 && i > height) || (j < 0 && j > width) || (i + offy > height) || (j + offx > width))
          continue;
-      }
-      for( int m = 0; m < x_tile; m++ )
+
+      //These are alot of shared mem accesses but less registers. Could use register might be faster
+      float beta = (float)((a.x-c.x)*(i-c.y) - (j-c.x)*(a.y-c.y))
+         /(float)((b.x-a.x)*(c.y-a.y) - (c.x-a.x)*(b.y-a.y));
+      float gamma = (float)((b.x-a.x)*(i-a.y) - (j-a.x)*(b.y-a.y))/
+         (float)((b.x-a.x)*(c.y-a.y) - (c.x-a.x)*(b.y-a.y));
+      float alpha;
+      if( beta+gamma <= 1.010 && beta >=-0.010 && gamma >= -0.010 )
+         alpha = 1- beta -gamma;
+      else
+         continue;
+
+      float depthTemp = a.z * alpha + b.z * beta + c.z *gamma;
+      pix.r = a_c.r*alpha + b_c.r*beta + c_c.r*gamma;
+      pix.g = a_c.g*alpha + b_c.g*beta + c_c.g*gamma;
+      pix.b = a_c.b*alpha + b_c.b*beta + c_c.b*gamma;
+      if( depthTemp > depth[(offy+i)*width + j+offx] )
       {
-         int j = TILE_WIDTH * m + threadIdx.x + box.xl;
-         if( j >= width || j + offx >= width )
+         while( atomicInc( &(mutex[(i+offy)*width + j + offx]), 1 ) ){};
+         if( depthTemp > depth[(i+offy)*width + j+offx] )
          {
-            break;
+            depth[(i+offy)*width + j + offx ] = depthTemp;
+            data[(i+offy)*width + j + offx] = pix;
          }
-         if( j < 0  || j + offx < 0)
-         {
-            continue;
-         }
-
-         if( i < box.yl || i > box.yr || j > box.xr || j < box.xl)
-         {
-            continue;
-         }
-         //These are alot of shared mem accesses but less registers. Could use register might be faster
-         float beta = (float)((a.x-c.x)*(i-c.y) - (j-c.x)*(a.y-c.y))
-            /(float)((b.x-a.x)*(c.y-a.y) - (c.x-a.x)*(b.y-a.y));
-         float gamma = (float)((b.x-a.x)*(i-a.y) - (j-a.x)*(b.y-a.y))/
-            (float)((b.x-a.x)*(c.y-a.y) - (c.x-a.x)*(b.y-a.y));
-         float alpha;
-         if( beta+gamma <= 1.010 && beta >=-0.010 && gamma >= -0.010 )
-            alpha = 1- beta -gamma;
-         else
-            continue;
-
-         float depthTemp = a.z * alpha + b.z * beta + c.z *gamma;
-         pix.r = a_c.r*alpha + b_c.r*beta + c_c.r*gamma;
-         pix.g = a_c.g*alpha + b_c.g*beta + c_c.g*gamma;
-         pix.b = a_c.b*alpha + b_c.b*beta + c_c.b*gamma;
-         if( depthTemp > depth[(offy+i)*width + j+offx] )
-         {
-            while( atomicInc( &(mutex[(i+offy)*width + j + offx]), 1 ) ){};
-            if( depthTemp > depth[(i+offy)*width + j+offx] )
-            {
-               depth[(i+offy)*width + j + offx ] = depthTemp;
-               data[(i+offy)*width + j + offx] = pix;
-            }
-            atomicDec( &(mutex[(offy+i)*width + j +offx]), 0 );
-         }
+         atomicDec( &(mutex[(offy+i)*width + j +offx]), 0 );
       }
    }
 }
 __global__ void initData( pixel *data, float *depth, int width, int height ){
-   int i = blockIdx.x * TILE_WIDTH + threadIdx.x;
-   int j = blockIdx.y * TILE_WIDTH + threadIdx.y;
+   int i = blockIdx.x * INIT_WIDTH + threadIdx.x;
+   int j = blockIdx.y * INIT_WIDTH + threadIdx.y;
 
    if( i < width && j < height )
    {
@@ -189,13 +169,13 @@ int rasterize( BasicModel &mesh, Tga &file )
    CUDASAFECALL(cudaMalloc( (void **)&d_color, sizeof(Color) * mesh.Vertices.size() ));
    CUDASAFECALL(cudaMalloc( (void **)&d_mutex, sizeof(unsigned int) * width * height ));
 
-   int w = width / TILE_WIDTH;
-   if( w < (float)width / (float)TILE_WIDTH )
+   int w = width / INIT_WIDTH;
+   if( w < (float)width / (float)INIT_WIDTH )
       w++;
-   int h = height / TILE_WIDTH;
-   if( h < (float)height / (float)TILE_WIDTH )
+   int h = height / INIT_WIDTH;
+   if( h < (float)height / (float)INIT_WIDTH )
       h++;
-   dim3 dimBlock1( TILE_WIDTH, TILE_WIDTH );
+   dim3 dimBlock1( INIT_WIDTH, INIT_WIDTH );
    dim3 dimGrid1( w, h );
    initData<<<dimGrid1, dimBlock1>>>( d_data, d_depth, width, height );
 
@@ -211,7 +191,7 @@ int rasterize( BasicModel &mesh, Tga &file )
    x = sqrt( tris );
    if ( x < sqrt( tris ) )
       x++;
-   dim3 dimBlock( TILE_WIDTH, TILE_WIDTH );
+   dim3 dimBlock( TILE_WIDTH );
    dim3 dimGrid( x, x );
 
    cudaEventRecord(start1, 0);
