@@ -14,11 +14,12 @@ user  0m2.715s
 sys   0m0.164s
 
 timing for GPU run 25 bunny 2000x2000
-Cuda Time: 623.252563
-Cuda Time (without memcpy): 598.798096
-real  0m2.196s
-user  0m1.255s
-sys   0m0.217s
+Cuda Time: 263.302094
+Cuda Time (excluding memcpy): 238.622177
+
+real  0m4.793s
+user  0m0.881s
+sys   0m0.251s
 
 CPU v. GPU error per pixel
 0.00034
