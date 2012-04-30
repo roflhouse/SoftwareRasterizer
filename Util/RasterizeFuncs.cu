@@ -102,15 +102,15 @@ __global__ void rasterizeCUDA_Dev( int width, int height, int offx, int offy, in
       pix.g = a_c.g*alpha + b_c.g*beta + c_c.g*gamma;
       pix.b = a_c.b*alpha + b_c.b*beta + c_c.b*gamma;
       /*for( int h = 0; h < TILE_WIDTH; h++ )
-      {
-         if( threadIdx.x == h )
-         {
-            while( !atomicInc( &(mutex[(i+offy)*width + j + offx]), 1) ) {};
-         }
-         __threadfence();
-         __syncthreads();
-      }
-      */
+        {
+        if( threadIdx.x == h )
+        {
+        while( !atomicInc( &(mutex[(i+offy)*width + j + offx]), 1) ) {};
+        }
+        __threadfence();
+        __syncthreads();
+        }
+       */
       while( !atomicInc( &(mutex[(i+offy)*width +j + offx]), 1) ) {};
       if( depthTemp > depth[(i+offy)*width + j+offx] )
       {
@@ -132,6 +132,104 @@ __global__ void initData( pixel *data, float *depth, int width, int height ){
       depth[j*width + i] = -100000;
    }
 }
+void blurHor( pixel *data, pixel *output, int width, int height )
+{
+   float weight[5];
+   /*weight[0] = 0.225585938;
+   weight[1] = 0.193359375;
+   weight[2] = 0.120849609;
+   weight[3] = 0.053710938;
+   weight[4] = 0.016113281;
+   */
+
+   weight[0] = 0.2270270270;
+   weight[1] = 0.1945945946;
+   weight[2] = 0.1216216216;
+   weight[3] = 0.0540540541;
+   weight[4] = 0.0162162162;
+
+   for( int i = 0; i < height; i++ )
+   {
+      for( int j = 0; j < width; j++ )
+      {
+         int index = i*width + j;
+         output[index].r = data[index].r * weight[0];
+         output[index].g = data[index].g * weight[0];
+         output[index].b = data[index].b * weight[0];
+         for( int k = 1; k < 5; k++ )
+         {
+            int posIndex = j +k;
+            int negIndex = j - k;
+            if( posIndex >= width )
+               posIndex = width-1;
+            if( negIndex < 0 )
+               negIndex = 0;
+            posIndex += i *width;
+            negIndex += i *width;
+
+            output[index].r += data[posIndex].r * weight[k];
+            output[index].r += data[negIndex].r * weight[k];
+
+            output[index].g += data[posIndex].g * weight[k];
+            output[index].g += data[negIndex].g * weight[k];
+
+            output[index].b += data[posIndex].b * weight[k];
+            output[index].b += data[negIndex].b * weight[k];
+         }
+         if( output[index].r > 1 )
+            output[index].r = 1;
+         if( output[index].g > 1 )
+            output[index].g = 1;
+         if( output[index].b > 1 )
+            output[index].b = 1;
+      }
+   }
+}
+void blurVer( pixel *data, pixel *output, int width, int height )
+{
+   double weight[5];
+   weight[0] = 0.2270270270;
+   weight[1] = 0.1945945946;
+   weight[2] = 0.1216216216;
+   weight[3] = 0.0540540541;
+   weight[4] = 0.0162162162;
+
+   for( int i = 0; i < height; i++ )
+   {
+      for( int j = 0; j < width; j++ )
+      {
+         int index = i*width + j;
+         output[index].r = data[index].r * weight[0];
+         output[index].g = data[index].g * weight[0];
+         output[index].b = data[index].b * weight[0];
+         for( int k = 1; k < 5; k++ )
+         {
+            int posIndex = i +k;
+            int negIndex = i - k;
+            if( posIndex >= height )
+               continue;//posIndex = height-1;
+            if( negIndex < 0 )
+               continue;//negIndex = 0;
+            posIndex = posIndex *width + j;
+            negIndex = negIndex *width + j;
+            output[index].r += data[posIndex].r * weight[k];
+            output[index].r += data[negIndex].r * weight[k];
+
+            output[index].g += data[posIndex].g * weight[k];
+            output[index].g += data[negIndex].g * weight[k];
+
+            output[index].b += data[posIndex].b * weight[k];
+            output[index].b += data[negIndex].b * weight[k];
+         }
+         if( output[index].r > 1 )
+            output[index].r = 1;
+         if( output[index].g > 1 )
+            output[index].g = 1;
+         if( output[index].b > 1 )
+            output[index].b = 1;
+      }
+   }
+}
 int rasterize( BasicModel &mesh, Tga &file )
 {
    cudaEvent_t start, stop;
@@ -147,9 +245,10 @@ int rasterize( BasicModel &mesh, Tga &file )
    light.x = 3;
    light.y = 3;
    light.z = 3;
-   pixel *data = file.getBuffer();
    int width = file.getWidth();
    int height = file.getHeight();
+   pixel *tempBuffer = (pixel *) malloc(sizeof(pixel) * width *height );
+   pixel *data = file.getBuffer();
    unsigned int tris = mesh.Triangles.size();
 
    //Converts mesh verts to screenspace
@@ -239,6 +338,12 @@ int rasterize( BasicModel &mesh, Tga &file )
    cudaEventDestroy(stop);
    cudaEventDestroy(start1);
    cudaEventDestroy(stop1);
+
+   for( int i = 0; i < 100; i++ )
+   {
+      blurVer( data, tempBuffer, width, height );
+      blurHor( tempBuffer, data, width, height );
+   }
 
    return 0;
 }
