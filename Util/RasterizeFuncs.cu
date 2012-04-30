@@ -158,10 +158,11 @@ __global__ void blurHor( pixel *data, pixel *output, int width, int height )
         {
         for( int j = 0; j < width; j++ )
         {*/
-   int index = i*width + j;
-   output[index].r = data[index].r * weight[0];
-   output[index].g = data[index].g * weight[0];
-   output[index].b = data[index].b * weight[0];
+   int inIdx = i*width + j;
+   int outIdx = j*height + i;
+   output[outIdx].r = data[inIdx].r * weight[0];
+   output[outIdx].g = data[inIdx].g * weight[0];
+   output[outIdx].b = data[inIdx].b * weight[0];
    for( int k = 1; k < 5; k++ )
    {
       int posIndex = j +k;
@@ -173,21 +174,21 @@ __global__ void blurHor( pixel *data, pixel *output, int width, int height )
       posIndex += i *width;
       negIndex += i *width;
 
-      output[index].r += data[posIndex].r * weight[k];
-      output[index].r += data[negIndex].r * weight[k];
+      output[outIdx].r += data[posIndex].r * weight[k];
+      output[outIdx].r += data[negIndex].r * weight[k];
 
-      output[index].g += data[posIndex].g * weight[k];
-      output[index].g += data[negIndex].g * weight[k];
+      output[outIdx].g += data[posIndex].g * weight[k];
+      output[outIdx].g += data[negIndex].g * weight[k];
 
-      output[index].b += data[posIndex].b * weight[k];
-      output[index].b += data[negIndex].b * weight[k];
+      output[outIdx].b += data[posIndex].b * weight[k];
+      output[outIdx].b += data[negIndex].b * weight[k];
    }
-   if( output[index].r > 1 )
-      output[index].r = 1;
-   if( output[index].g > 1 )
-      output[index].g = 1;
-   if( output[index].b > 1 )
-      output[index].b = 1;
+   if( output[outIdx].r > 1 )
+      output[outIdx].r = 1;
+   if( output[outIdx].g > 1 )
+      output[outIdx].g = 1;
+   if( output[outIdx].b > 1 )
+      output[outIdx].b = 1;
    //      }
    //   }
 }
@@ -356,8 +357,8 @@ int rasterize( BasicModel &mesh, Tga &file )
 
    for( int i = 0; i < 100; i++ )
    {
-      blurVer<<<dimGrid2, dimBlock2>>>( d_data, d_buff, width, height );
-      blurHor<<<dimGrid2, dimBlock2>>>( d_buff, d_data, width, height );
+      blurHor<<<dimGrid2, dimBlock2>>>( d_data, d_buff, width, height );
+      blurHor<<<dimGrid2, dimBlock2>>>( d_buff, d_data, height, width );
    }
 
    CUDASAFECALL(cudaMemcpy( data, d_data, sizeof(pixel) * width * height, cudaMemcpyDeviceToHost ));
