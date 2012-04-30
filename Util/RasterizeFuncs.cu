@@ -349,8 +349,8 @@ int rasterize( BasicModel &mesh, Tga &file )
    cudaEventDestroy(start1);
    cudaEventDestroy(stop1);
 
-   dim3 dimBlock2(32, 32);
-   dim3 dimGrid2((height / 32) + 1, (width / 32) + 1);
+   dim3 dimBlock2(INIT_WIDTH, INIT_WIDTH);
+   dim3 dimGrid2((height / INIT_WIDTH) + 1, (width / INIT_WIDTH) + 1);
 
    CUDA_SAFE_CALL(cudaMalloc((void **) &d_buff, sizeof(pixel) * width * height)); 
 
