@@ -75,7 +75,7 @@ __global__ void rasterizeCUDA_Dev( int width, int height, int offx, int offy, in
 
    for( int n = 0; n < loop; n++ )
    {
-      pxIdx = n + threadIdx.x * loop;
+      pxIdx = n * TILE_WIDTH + threadIdx.x;
 
       if( pxIdx >= bb_size)
          return;
@@ -92,7 +92,7 @@ __global__ void rasterizeCUDA_Dev( int width, int height, int offx, int offy, in
       float gamma = (float)((b.x-a.x)*(i-a.y) - (j-a.x)*(b.y-a.y))/
          (float)((b.x-a.x)*(c.y-a.y) - (c.x-a.x)*(b.y-a.y));
       float alpha;
-      if( beta+gamma <= 1.010 && beta >=-0.010 && gamma >= -0.010 )
+      if( beta+gamma <= 1.01 && beta >=-0.01 && gamma >= -0.01 )
          alpha = 1- beta -gamma;
       else
          continue;
@@ -101,16 +101,23 @@ __global__ void rasterizeCUDA_Dev( int width, int height, int offx, int offy, in
       pix.r = a_c.r*alpha + b_c.r*beta + c_c.r*gamma;
       pix.g = a_c.g*alpha + b_c.g*beta + c_c.g*gamma;
       pix.b = a_c.b*alpha + b_c.b*beta + c_c.b*gamma;
-      if( depthTemp > depth[(offy+i)*width + j+offx] )
+      /*for( int h = 0; h < TILE_WIDTH; h++ )
       {
-         while( atomicInc( &(mutex[(i+offy)*width + j + offx]), 1 ) ){};
-         if( depthTemp > depth[(i+offy)*width + j+offx] )
+         if( threadIdx.x == h )
          {
-            depth[(i+offy)*width + j + offx ] = depthTemp;
-            data[(i+offy)*width + j + offx] = pix;
+            while( !atomicInc( &(mutex[(i+offy)*width + j + offx]), 1) ) {};
          }
-         atomicDec( &(mutex[(offy+i)*width + j +offx]), 0 );
+         __threadfence();
+         __syncthreads();
       }
+      */
+      while( !atomicInc( &(mutex[(i+offy)*width +j + offx]), 1) ) {};
+      if( depthTemp > depth[(i+offy)*width + j+offx] )
+      {
+         depth[(i+offy)*width + j + offx ] = depthTemp;
+         data[(i+offy)*width + j + offx] = pix;
+      }
+      atomicDec( &(mutex[(i+offy)*width + j +offx]), 0 );
    }
 }
 __global__ void initData( pixel *data, float *depth, int width, int height ){
