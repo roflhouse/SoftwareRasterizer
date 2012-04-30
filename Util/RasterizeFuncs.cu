@@ -132,15 +132,15 @@ __global__ void initData( pixel *data, float *depth, int width, int height ){
       depth[j*width + i] = -100000;
    }
 }
-void blurHor( pixel *data, pixel *output, int width, int height )
+__global__ void blurHor( pixel *data, pixel *output, int width, int height )
 {
    float weight[5];
    /*weight[0] = 0.225585938;
-   weight[1] = 0.193359375;
-   weight[2] = 0.120849609;
-   weight[3] = 0.053710938;
-   weight[4] = 0.016113281;
-   */
+     weight[1] = 0.193359375;
+     weight[2] = 0.120849609;
+     weight[3] = 0.053710938;
+     weight[4] = 0.016113281;
+    */
 
    weight[0] = 0.2270270270;
    weight[1] = 0.1945945946;
@@ -148,44 +148,50 @@ void blurHor( pixel *data, pixel *output, int width, int height )
    weight[3] = 0.0540540541;
    weight[4] = 0.0162162162;
 
-   for( int i = 0; i < height; i++ )
+   int i = blockIdx.y * blockDim.y + threadIdx.y;
+   int j = blockIdx.x * blockDim.x + threadIdx.x;
+
+   if (j >= width || i >= height)
+      return;
+
+   /*   for( int i = 0; i < height; i++ )
+        {
+        for( int j = 0; j < width; j++ )
+        {*/
+   int index = i*width + j;
+   output[index].r = data[index].r * weight[0];
+   output[index].g = data[index].g * weight[0];
+   output[index].b = data[index].b * weight[0];
+   for( int k = 1; k < 5; k++ )
    {
-      for( int j = 0; j < width; j++ )
-      {
-         int index = i*width + j;
-         output[index].r = data[index].r * weight[0];
-         output[index].g = data[index].g * weight[0];
-         output[index].b = data[index].b * weight[0];
-         for( int k = 1; k < 5; k++ )
-         {
-            int posIndex = j +k;
-            int negIndex = j - k;
-            if( posIndex >= width )
-               posIndex = width-1;
-            if( negIndex < 0 )
-               negIndex = 0;
-            posIndex += i *width;
-            negIndex += i *width;
+      int posIndex = j +k;
+      int negIndex = j - k;
+      if( posIndex >= width )
+         posIndex = width-1;
+      if( negIndex < 0 )
+         negIndex = 0;
+      posIndex += i *width;
+      negIndex += i *width;
 
-            output[index].r += data[posIndex].r * weight[k];
-            output[index].r += data[negIndex].r * weight[k];
+      output[index].r += data[posIndex].r * weight[k];
+      output[index].r += data[negIndex].r * weight[k];
 
-            output[index].g += data[posIndex].g * weight[k];
-            output[index].g += data[negIndex].g * weight[k];
+      output[index].g += data[posIndex].g * weight[k];
+      output[index].g += data[negIndex].g * weight[k];
 
-            output[index].b += data[posIndex].b * weight[k];
-            output[index].b += data[negIndex].b * weight[k];
-         }
-         if( output[index].r > 1 )
-            output[index].r = 1;
-         if( output[index].g > 1 )
-            output[index].g = 1;
-         if( output[index].b > 1 )
-            output[index].b = 1;
-      }
+      output[index].b += data[posIndex].b * weight[k];
+      output[index].b += data[negIndex].b * weight[k];
    }
+   if( output[index].r > 1 )
+      output[index].r = 1;
+   if( output[index].g > 1 )
+      output[index].g = 1;
+   if( output[index].b > 1 )
+      output[index].b = 1;
+   //      }
+   //   }
 }
-void blurVer( pixel *data, pixel *output, int width, int height )
+__global__ void blurVer( pixel *data, pixel *output, int width, int height )
 {
    double weight[5];
    weight[0] = 0.2270270270;
@@ -194,41 +200,46 @@ void blurVer( pixel *data, pixel *output, int width, int height )
    weight[3] = 0.0540540541;
    weight[4] = 0.0162162162;
 
-   for( int i = 0; i < height; i++ )
+   int i = blockIdx.y * blockDim.y + threadIdx.y;
+   int j = blockIdx.x * blockDim.x + threadIdx.x;
+
+   if (j >= width || i >= height)
+      return;
+   /*   for( int i = 0; i < height; i++ )
+        {
+        for( int j = 0; j < width; j++ )
+        {*/
+   int index = i*width + j;
+   output[index].r = data[index].r * weight[0];
+   output[index].g = data[index].g * weight[0];
+   output[index].b = data[index].b * weight[0];
+   for( int k = 1; k < 5; k++ )
    {
-      for( int j = 0; j < width; j++ )
-      {
-         int index = i*width + j;
-         output[index].r = data[index].r * weight[0];
-         output[index].g = data[index].g * weight[0];
-         output[index].b = data[index].b * weight[0];
-         for( int k = 1; k < 5; k++ )
-         {
-            int posIndex = i +k;
-            int negIndex = i - k;
-            if( posIndex >= height )
-               continue;//posIndex = height-1;
-            if( negIndex < 0 )
-               continue;//negIndex = 0;
-            posIndex = posIndex *width + j;
-            negIndex = negIndex *width + j;
-            output[index].r += data[posIndex].r * weight[k];
-            output[index].r += data[negIndex].r * weight[k];
+      int posIndex = i +k;
+      int negIndex = i - k;
+      if( posIndex >= height )
+         continue;//posIndex = height-1;
+      if( negIndex < 0 )
+         continue;//negIndex = 0;
+      posIndex = posIndex *width + j;
+      negIndex = negIndex *width + j;
+      output[index].r += data[posIndex].r * weight[k];
+      output[index].r += data[negIndex].r * weight[k];
 
-            output[index].g += data[posIndex].g * weight[k];
-            output[index].g += data[negIndex].g * weight[k];
+      output[index].g += data[posIndex].g * weight[k];
+      output[index].g += data[negIndex].g * weight[k];
 
-            output[index].b += data[posIndex].b * weight[k];
-            output[index].b += data[negIndex].b * weight[k];
-         }
-         if( output[index].r > 1 )
-            output[index].r = 1;
-         if( output[index].g > 1 )
-            output[index].g = 1;
-         if( output[index].b > 1 )
-            output[index].b = 1;
-      }
+      output[index].b += data[posIndex].b * weight[k];
+      output[index].b += data[negIndex].b * weight[k];
    }
+   if( output[index].r > 1 )
+      output[index].r = 1;
+   if( output[index].g > 1 )
+      output[index].g = 1;
+   if( output[index].b > 1 )
+      output[index].b = 1;
+   //      }
+   //   }
 }
 int rasterize( BasicModel &mesh, Tga &file )
 {
@@ -247,7 +258,7 @@ int rasterize( BasicModel &mesh, Tga &file )
    light.z = 3;
    int width = file.getWidth();
    int height = file.getHeight();
-   pixel *tempBuffer = (pixel *) malloc(sizeof(pixel) * width *height );
+   //   pixel *tempBuffer = (pixel *) malloc(sizeof(pixel) * width *height );
    pixel *data = file.getBuffer();
    unsigned int tris = mesh.Triangles.size();
 
@@ -266,6 +277,7 @@ int rasterize( BasicModel &mesh, Tga &file )
    float *d_depth;
    unsigned int *d_mutex;
    pixel *d_data;
+   pixel *d_buff;
 
    CUDASAFECALL(cudaMalloc( (void **)&d_depth, sizeof(float) * width * height ));
    CUDASAFECALL(cudaMalloc( (void **)&d_vert, sizeof(Vertex) * mesh.Vertices.size() ));
@@ -314,14 +326,12 @@ int rasterize( BasicModel &mesh, Tga &file )
 
    cudaEventRecord(stop1, 0);
 
-   CUDASAFECALL(cudaMemcpy( data, d_data, sizeof(pixel) * width * height, cudaMemcpyDeviceToHost ));
    printf("Ending Kernel\n");
    cudaFree( d_vert );
    cudaFree( d_tri );
    cudaFree( d_box );
    cudaFree( d_color );
    cudaFree( d_mutex );
-   cudaFree( d_data );
    cudaFree( d_depth );
 
    cudaEventRecord(stop, 0);
@@ -339,11 +349,18 @@ int rasterize( BasicModel &mesh, Tga &file )
    cudaEventDestroy(start1);
    cudaEventDestroy(stop1);
 
+   dim3 dimBlock2(32, 32);
+   dim3 dimGrid2((height / 32) + 1, (width / 32) + 1);
+
+   CUDA_SAFE_CALL(cudaMalloc((void **) &d_buff, sizeof(pixel) * width * height)); 
+
    for( int i = 0; i < 100; i++ )
    {
-      blurVer( data, tempBuffer, width, height );
-      blurHor( tempBuffer, data, width, height );
+      blurVer<<<dimGrid2, dimBlock2>>>( d_data, d_buff, width, height );
+      blurHor<<<dimGrid2, dimBlock2>>>( d_buff, d_data, width, height );
    }
 
+   CUDASAFECALL(cudaMemcpy( data, d_data, sizeof(pixel) * width * height, cudaMemcpyDeviceToHost ));
+   cudaFree( d_data );
    return 0;
 }
