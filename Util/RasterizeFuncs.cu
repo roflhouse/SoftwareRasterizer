@@ -160,9 +160,10 @@ __global__ void blurHor( pixel *data, pixel *output, int width, int height )
         {*/
    int inIdx = i*width + j;
    int outIdx = j*height + i;
-   output[outIdx].r = data[inIdx].r * weight[0];
-   output[outIdx].g = data[inIdx].g * weight[0];
-   output[outIdx].b = data[inIdx].b * weight[0];
+   pixel temp, flow = data[inIdx];
+   temp.r = flow.r * weight[0];
+   temp.g = flow.g * weight[0];
+   temp.b = flow.b * weight[0];
    for( int k = 1; k < 5; k++ )
    {
       int posIndex = j +k;
@@ -173,22 +174,25 @@ __global__ void blurHor( pixel *data, pixel *output, int width, int height )
          negIndex = 0;
       posIndex += i *width;
       negIndex += i *width;
+      
+      flow = data[posIndex];
+      temp.r += flow.r * weight[k];
+      temp.g += flow.g * weight[k];
+      temp.b += flow.b * weight[k];
 
-      output[outIdx].r += data[posIndex].r * weight[k];
-      output[outIdx].r += data[negIndex].r * weight[k];
-
-      output[outIdx].g += data[posIndex].g * weight[k];
-      output[outIdx].g += data[negIndex].g * weight[k];
-
-      output[outIdx].b += data[posIndex].b * weight[k];
-      output[outIdx].b += data[negIndex].b * weight[k];
+      flow = data[negIndex];
+      temp.r += flow.r * weight[k];
+      temp.g += flow.g * weight[k];
+      temp.b += flow.b * weight[k];
    }
-   if( output[outIdx].r > 1 )
-      output[outIdx].r = 1;
-   if( output[outIdx].g > 1 )
-      output[outIdx].g = 1;
-   if( output[outIdx].b > 1 )
-      output[outIdx].b = 1;
+   if( temp.r > 1 )
+      temp.r = 1;
+   if( temp.g > 1 )
+      temp.g = 1;
+   if( temp.b > 1 )
+      temp.b = 1;
+
+   output[outIdx] = temp;
    //      }
    //   }
 }
@@ -363,5 +367,6 @@ int rasterize( BasicModel &mesh, Tga &file )
 
    CUDASAFECALL(cudaMemcpy( data, d_data, sizeof(pixel) * width * height, cudaMemcpyDeviceToHost ));
    cudaFree( d_data );
+   cudaFree( d_buff );
    return 0;
 }
