@@ -19,7 +19,9 @@
       printf("CudaErrorCheck %d\n", err);           \
       exit(1); \
    } }
+#define CONST_MEM_PIXELS 5120
 
+__device__ __constant__ pixel constPixels[CONST_MEM_PIXELS];
 
 __global__ void rasterizeCUDA_Dev( int width, int height, int offx, int offy, int num_tri, pixel *data,
       Vertex *vertices, Triangle *triangles, BoundingBox *boundingBoxes, Color *colors,
@@ -132,7 +134,7 @@ __global__ void initData( pixel *data, float *depth, int width, int height ){
       depth[j*width + i] = -100000;
    }
 }
-__global__ void blurHor( pixel *data, pixel *output, int width, int height )
+__global__ void blurHor( pixel *output, int width, int height )
 {
    float weight[5];
    /*weight[0] = 0.225585938;
@@ -147,6 +149,7 @@ __global__ void blurHor( pixel *data, pixel *output, int width, int height )
    weight[2] = 0.1216216216;
    weight[3] = 0.0540540541;
    weight[4] = 0.0162162162;
+   pixel outTemp;
 
    int i = blockIdx.y * blockDim.y + threadIdx.y;
    int j = blockIdx.x * blockDim.x + threadIdx.x;
@@ -158,11 +161,10 @@ __global__ void blurHor( pixel *data, pixel *output, int width, int height )
         {
         for( int j = 0; j < width; j++ )
         {*/
-   int inIdx = i*width + j;
    int outIdx = j*height + i;
-   output[outIdx].r = data[inIdx].r * weight[0];
-   output[outIdx].g = data[inIdx].g * weight[0];
-   output[outIdx].b = data[inIdx].b * weight[0];
+   outTemp.r = constPixels[j].r * weight[0];
+   outTemp.g = constPixels[j].g * weight[0];
+   outTemp.b = constPixels[j].b * weight[0];
    for( int k = 1; k < 5; k++ )
    {
       int posIndex = j +k;
@@ -171,24 +173,23 @@ __global__ void blurHor( pixel *data, pixel *output, int width, int height )
          posIndex = width-1;
       if( negIndex < 0 )
          negIndex = 0;
-      posIndex += i *width;
-      negIndex += i *width;
 
-      output[outIdx].r += data[posIndex].r * weight[k];
-      output[outIdx].r += data[negIndex].r * weight[k];
+      outTemp.r += constPixels[posIndex].r * weight[k];
+      outTemp.r += constPixels[negIndex].r * weight[k];
 
-      output[outIdx].g += data[posIndex].g * weight[k];
-      output[outIdx].g += data[negIndex].g * weight[k];
+      outTemp.g += constPixels[posIndex].g * weight[k];
+      outTemp.g += constPixels[negIndex].g * weight[k];
 
-      output[outIdx].b += data[posIndex].b * weight[k];
-      output[outIdx].b += data[negIndex].b * weight[k];
+      outTemp.b += constPixels[posIndex].b * weight[k];
+      outTemp.b += constPixels[negIndex].b * weight[k];
    }
-   if( output[outIdx].r > 1 )
-      output[outIdx].r = 1;
-   if( output[outIdx].g > 1 )
-      output[outIdx].g = 1;
-   if( output[outIdx].b > 1 )
-      output[outIdx].b = 1;
+   if( outTemp.r > 1 )
+      outTemp.r = 1;
+   if( outTemp.g > 1 )
+      outTemp.g = 1;
+   if( outTemp.b > 1 )
+      outTemp.b = 1;
+   output[outIdx] = outTemp;
    //      }
    //   }
 }
@@ -211,9 +212,10 @@ __global__ void blurVer( pixel *data, pixel *output, int width, int height )
         for( int j = 0; j < width; j++ )
         {*/
    int index = i*width + j;
-   output[index].r = data[index].r * weight[0];
-   output[index].g = data[index].g * weight[0];
-   output[index].b = data[index].b * weight[0];
+   pixel outTemp;
+   outTemp.r = data[index].r * weight[0];
+   outTemp.g = data[index].g * weight[0];
+   outTemp.b = data[index].b * weight[0];
    for( int k = 1; k < 5; k++ )
    {
       int posIndex = i +k;
@@ -224,21 +226,22 @@ __global__ void blurVer( pixel *data, pixel *output, int width, int height )
          continue;//negIndex = 0;
       posIndex = posIndex *width + j;
       negIndex = negIndex *width + j;
-      output[index].r += data[posIndex].r * weight[k];
-      output[index].r += data[negIndex].r * weight[k];
+      outTemp.r += data[posIndex].r * weight[k];
+      outTemp.r += data[negIndex].r * weight[k];
 
-      output[index].g += data[posIndex].g * weight[k];
-      output[index].g += data[negIndex].g * weight[k];
+      outTemp.g += data[posIndex].g * weight[k];
+      outTemp.g += data[negIndex].g * weight[k];
 
-      output[index].b += data[posIndex].b * weight[k];
-      output[index].b += data[negIndex].b * weight[k];
+      outTemp.b += data[posIndex].b * weight[k];
+      outTemp.b += data[negIndex].b * weight[k];
    }
-   if( output[index].r > 1 )
-      output[index].r = 1;
-   if( output[index].g > 1 )
-      output[index].g = 1;
-   if( output[index].b > 1 )
-      output[index].b = 1;
+   if( outTemp.r > 1 )
+      outTemp.r = 1;
+   if( outTemp.g > 1 )
+      outTemp.g = 1;
+   if( outTemp.b > 1 )
+      outTemp.b = 1;
+   output[index] = outTemp;
    //      }
    //   }
 }
@@ -250,6 +253,9 @@ int rasterize( BasicModel &mesh, Tga &file )
    cudaEvent_t start1, stop1;
    cudaEventCreate(&start1);
    cudaEventCreate(&stop1);
+   cudaEvent_t start2, stop2;
+   cudaEventCreate(&start2);
+   cudaEventCreate(&stop2);
 
    cudaEventRecord(start, 0);
 
@@ -324,10 +330,36 @@ int rasterize( BasicModel &mesh, Tga &file )
       }
    }
    CUDAERRORCHECK();
-
    cudaEventRecord(stop1, 0);
+   /*dim3 dimBlock2(INIT_WIDTH, INIT_WIDTH);
+   dim3 dimGrid2((height / INIT_WIDTH) + 1, (width / INIT_WIDTH) + 1);
+   */
+   dim3 dimBlock2( 256 );
+   dim3 dimGrid2( 2000/256 +1 );
+
+   CUDA_SAFE_CALL(cudaMalloc((void **) &d_buff, sizeof(pixel) * width * height));
+
+   cudaEventRecord(start2, 0);
+   for( int i = 0; i < 100; i++ )
+   {
+      for ( unsigned int j = 0; j < height; j++) {
+         CUDASAFECALL(cudaMemcpyToSymbol( constPixels, d_data +(width * j ),
+                  sizeof(pixel) * width, 0, cudaMemcpyDeviceToDevice ));
+         blurHor<<<dimGrid2, dimBlock2>>>( d_buff, width, height );
+      }
+
+      for ( unsigned int j = 0; j < width; j++) {
+         CUDASAFECALL(cudaMemcpyToSymbol( constPixels, d_buff + (height * j),
+                  sizeof(pixel) * height, 0, cudaMemcpyDeviceToDevice ));
+         blurHor<<<dimGrid2, dimBlock2>>>( d_data, height, width );
+      }
+   }
+   cudaEventRecord(stop2, 0);
+   CUDASAFECALL(cudaMemcpy( data, d_data, sizeof(pixel) * width * height, cudaMemcpyDeviceToHost ));
+
 
    printf("Ending Kernel\n");
+   cudaFree( d_data );
    cudaFree( d_vert );
    cudaFree( d_tri );
    cudaFree( d_box );
@@ -343,25 +375,17 @@ int rasterize( BasicModel &mesh, Tga &file )
    printf("Cuda Time: %f\n", elapsedTime);
 
    cudaEventElapsedTime(&elapsedTime, start1, stop1);
-   printf("Cuda Time (no memcpy): %f\n", elapsedTime);
+   printf("Rasterize Time: %f\n", elapsedTime);
+
+   cudaEventElapsedTime(&elapsedTime, start2, stop2);
+   printf("Blur Time: %f\n", elapsedTime);
 
    cudaEventDestroy(start);
    cudaEventDestroy(stop);
    cudaEventDestroy(start1);
    cudaEventDestroy(stop1);
+   cudaEventDestroy(start2);
+   cudaEventDestroy(stop2);
 
-   dim3 dimBlock2(INIT_WIDTH, INIT_WIDTH);
-   dim3 dimGrid2((height / INIT_WIDTH) + 1, (width / INIT_WIDTH) + 1);
-
-   CUDA_SAFE_CALL(cudaMalloc((void **) &d_buff, sizeof(pixel) * width * height)); 
-
-   for( int i = 0; i < 100; i++ )
-   {
-      blurHor<<<dimGrid2, dimBlock2>>>( d_data, d_buff, width, height );
-      blurHor<<<dimGrid2, dimBlock2>>>( d_buff, d_data, height, width );
-   }
-
-   CUDASAFECALL(cudaMemcpy( data, d_data, sizeof(pixel) * width * height, cudaMemcpyDeviceToHost ));
-   cudaFree( d_data );
    return 0;
 }
