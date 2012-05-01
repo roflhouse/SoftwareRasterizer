@@ -157,14 +157,11 @@ __global__ void blurHor( pixel *output, int width, int height )
    if (j >= width || i >= height)
       return;
 
-   /*   for( int i = 0; i < height; i++ )
-        {
-        for( int j = 0; j < width; j++ )
-        {*/
    int outIdx = j*height + i;
-   outTemp.r = constPixels[j].r * weight[0];
-   outTemp.g = constPixels[j].g * weight[0];
-   outTemp.b = constPixels[j].b * weight[0];
+   pixel flow = constPixels[j];
+   outTemp.r = flow.r * weight[0];
+   outTemp.g = flow.g * weight[0];
+   outTemp.b = flow.b * weight[0];
    for( int k = 1; k < 5; k++ )
    {
       int posIndex = j +k;
@@ -174,14 +171,15 @@ __global__ void blurHor( pixel *output, int width, int height )
       if( negIndex < 0 )
          negIndex = 0;
 
-      outTemp.r += constPixels[posIndex].r * weight[k];
-      outTemp.r += constPixels[negIndex].r * weight[k];
+      flow = constPixels[posIndex];
+      outTemp.r += flow.r * weight[k];
+      outTemp.g += flow.g * weight[k];
+      outTemp.b += flow.b * weight[k];
 
-      outTemp.g += constPixels[posIndex].g * weight[k];
-      outTemp.g += constPixels[negIndex].g * weight[k];
-
-      outTemp.b += constPixels[posIndex].b * weight[k];
-      outTemp.b += constPixels[negIndex].b * weight[k];
+      flow = constPixels[negIndex];
+      outTemp.r += flow.r * weight[k];
+      outTemp.g += flow.g * weight[k];
+      outTemp.b += flow.b * weight[k];
    }
    if( outTemp.r > 1 )
       outTemp.r = 1;
@@ -189,9 +187,7 @@ __global__ void blurHor( pixel *output, int width, int height )
       outTemp.g = 1;
    if( outTemp.b > 1 )
       outTemp.b = 1;
-   output[outIdx] = outTemp;
-   //      }
-   //   }
+   //output[outIdx] = outTemp;
 }
 __global__ void blurVer( pixel *data, pixel *output, int width, int height )
 {
