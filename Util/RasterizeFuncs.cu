@@ -32,38 +32,28 @@ __global__ void rasterizeCUDA_Dev( int width, int height, int offx, int offy, in
    int width_bb;
    int height_bb;
 
-   __shared__ Triangle triangle;
-   __shared__ BoundingBox box;
-   //Vertices for this triangle
-   __shared__ Vertex a;
-   __shared__ Vertex b;
-   __shared__ Vertex c;
-   //Colors
-   __shared__ Color a_c;
-   __shared__ Color b_c;
-   __shared__ Color c_c;
+   Triangle triangle;
+   BoundingBox box;
+   //vertices for this triangle
+   Vertex a;
+   Vertex b;
+   Vertex c;
+   //colors
+   Color a_c;
+   Color b_c;
+   Color c_c;
 
    //Fill out all triangle shared data;
-   if( threadIdx.x == 0)
-      triangle = triangles[triIndex];
-   else if (threadIdx.x == 1)
-      box = boundingBoxes[triIndex];
+   triangle = triangles[triIndex];
+   box = boundingBoxes[triIndex];
 
-   __syncthreads();
    //Fill out all Vertex shared data;
-   if( threadIdx.x == 0 )
-      a = vertices[triangle.a];
-   else if( threadIdx.x == 1 )
-      b = vertices[triangle.b];
-   else if( threadIdx.x == 2 )
-      c = vertices[triangle.c];
-   else if( threadIdx.x == 3 )
-      a_c = colors[triangle.a];
-   else if( threadIdx.x == 4)
-      b_c = colors[triangle.b];
-   else if( threadIdx.x == 5)
-      c_c = colors[triangle.c];
-   __syncthreads();
+   a = vertices[triangle.a];
+   b = vertices[triangle.b];
+   c = vertices[triangle.c];
+   a_c = colors[triangle.a];
+   b_c = colors[triangle.b];
+   c_c = colors[triangle.c];
 
    width_bb = box.xr - box.xl;
    height_bb = box.yr - box.yl;
@@ -111,13 +101,16 @@ __global__ void rasterizeCUDA_Dev( int width, int height, int offx, int offy, in
         __syncthreads();
         }
        */
-      while( !atomicInc( &(mutex[(i+offy)*width +j + offx]), 1) ) {};
       if( depthTemp > depth[(i+offy)*width + j+offx] )
       {
-         depth[(i+offy)*width + j + offx ] = depthTemp;
-         data[(i+offy)*width + j + offx] = pix;
+         while( !atomicInc( &(mutex[(i+offy)*width +j + offx]), 1) ) {};
+         if( depthTemp > depth[(i+offy)*width + j+offx] )
+         {
+            depth[(i+offy)*width + j + offx ] = depthTemp;
+            data[(i+offy)*width + j + offx] = pix;
+         }
+         atomicDec( &(mutex[(i+offy)*width + j +offx]), 0 );
       }
-      atomicDec( &(mutex[(i+offy)*width + j +offx]), 0 );
    }
 }
 __global__ void initData( pixel *data, float *depth, int width, int height ){
@@ -136,13 +129,6 @@ __global__ void blurHor( pixel *data, pixel *output, int width, int height )
 {
    __shared__ pixel pixels[INIT_WIDTH+8][INIT_WIDTH +8];
    float weight[5];
-   /*weight[0] = 0.225585938;
-     weight[1] = 0.193359375;
-     weight[2] = 0.120849609;
-     weight[3] = 0.053710938;
-     weight[4] = 0.016113281;
-    */
-
    weight[0] = 0.2270270270;
    weight[1] = 0.1945945946;
    weight[2] = 0.1216216216;
@@ -155,6 +141,7 @@ __global__ void blurHor( pixel *data, pixel *output, int width, int height )
    if (j >= width || i >= height)
       return;
 
+   pixels[threadIdx.x + 4][threadIdx.y] = data[i*width + j];
    if( threadIdx.x < 4 && i*width + j -4 > 0 )
    {
       pixels[threadIdx.x][threadIdx.y] = data[i*width + j -4];
@@ -164,7 +151,6 @@ __global__ void blurHor( pixel *data, pixel *output, int width, int height )
       pixels[threadIdx.x+8][threadIdx.y] = data[i*width + j + 4];
    }
 
-   pixels[threadIdx.x + 4][threadIdx.y] = data[i*width + j];
    __syncthreads();
 
    int inIdx = threadIdx.x + 4;
@@ -266,7 +252,6 @@ int rasterize( BasicModel &mesh, Tga &file )
    cudaEventCreate(&start2);
    cudaEventCreate(&stop2);
 
-
    Normal light;
    light.x = 3;
    light.y = 3;
@@ -328,29 +313,27 @@ int rasterize( BasicModel &mesh, Tga &file )
    dim3 dimBlock( TILE_WIDTH );
    dim3 dimGrid( x, x );
 
-   cudaEventRecord(start1, 0);
    printf("Starting Kernel\n");
-   for( int i = 0; i < 5; i++ )
+   cudaEventRecord(start1, 0);
+   for( int i = 0; i < 5; ++i )
    {
-      for( int j = 0; j < 5; j++ )
+      for( int j = 0; j < 5; ++j )
       {
-         rasterizeCUDA_Dev<<< dimGrid, dimBlock >>>(width, height,width/5 * i, height/5 * j, tris, d_data, d_vert,
-               d_tri, d_box, d_color, d_depth, d_mutex );
+         rasterizeCUDA_Dev<<< dimGrid, dimBlock >>>(width, height, width/5 * i, height/5 * j, tris,
+               d_data, d_vert, d_tri, d_box, d_color, d_depth, d_mutex );
       }
    }
    CUDAERRORCHECK();
 
    cudaEventRecord(stop1, 0);
 
-   cudaEventRecord(start2, 0);
-
    dim3 dimBlock2(INIT_WIDTH,INIT_WIDTH);
    dim3 dimGrid2((width / (INIT_WIDTH)) + 1, (height / (INIT_WIDTH)) + 1);
 
-
    CUDA_SAFE_CALL(cudaMalloc((void **) &d_buff, sizeof(pixel) * width * height));
 
-   for( int i = 0; i < 100; i++ )
+   cudaEventRecord(start2, 0);
+   for( int i = 0; i < 0; i++ )
    {
       blurHor<<<dimGrid2, dimBlock2>>>( d_data, d_buff, width, height );
       blurHor<<<dimGrid2, dimBlock2>>>( d_buff, d_data, height, width );
