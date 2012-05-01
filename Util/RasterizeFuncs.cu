@@ -134,6 +134,7 @@ __global__ void initData( pixel *data, float *depth, int width, int height ){
 }
 __global__ void blurHor( pixel *data, pixel *output, int width, int height )
 {
+   __shared__ pixel pixels[SHARED_TILE +10];
    float weight[5];
    /*weight[0] = 0.225585938;
      weight[1] = 0.193359375;
@@ -148,47 +149,57 @@ __global__ void blurHor( pixel *data, pixel *output, int width, int height )
    weight[3] = 0.0540540541;
    weight[4] = 0.0162162162;
 
+   if( threadIdx.y != 0 )
+      return;
    int i = blockIdx.y * blockDim.y + threadIdx.y;
    int j = blockIdx.x * blockDim.x + threadIdx.x;
 
    if (j >= width || i >= height)
       return;
 
-   /*   for( int i = 0; i < height; i++ )
-        {
-        for( int j = 0; j < width; j++ )
-        {*/
-   int inIdx = i*width + j;
+   if( threadIdx.x < 4 && i*width + j -4 > 0 )
+   {
+      pixels[threadIdx.x] = data[i*width + j -4];
+   }
+   else if(threadIdx.x > blockDim.x -5 && threadIdx.x+8 < SHARED_TILE +8 )
+   {
+      pixels[threadIdx.x+8] = data[i*width + j + 4];
+   }
+
+   pixels[threadIdx.x + 4] = data[i*width + j];
+   __syncthreads();
+
+   int inIdx = threadIdx.x + 4;
    int outIdx = j*height + i;
-   output[outIdx].r = data[inIdx].r * weight[0];
-   output[outIdx].g = data[inIdx].g * weight[0];
-   output[outIdx].b = data[inIdx].b * weight[0];
+   pixel temp;
+   temp.r = pixels[inIdx].r * weight[0];
+   temp.g = pixels[inIdx].g * weight[0];
+   temp.b = pixels[inIdx].b * weight[0];
    for( int k = 1; k < 5; k++ )
    {
-      int posIndex = j +k;
-      int negIndex = j - k;
-      if( posIndex >= width )
-         posIndex = width-1;
-      if( negIndex < 0 )
-         negIndex = 0;
-      posIndex += i *width;
-      negIndex += i *width;
+      int posIndex = inIdx + k;
+      int negIndex = inIdx - k;
+      if( j+k >= width )
+         posIndex = inIdx;
+      if( j-k < 0 )
+         negIndex = inIdx;
 
-      output[outIdx].r += data[posIndex].r * weight[k];
-      output[outIdx].r += data[negIndex].r * weight[k];
+      temp.r += pixels[posIndex].r * weight[k];
+      temp.r += pixels[negIndex].r * weight[k];
 
-      output[outIdx].g += data[posIndex].g * weight[k];
-      output[outIdx].g += data[negIndex].g * weight[k];
+      temp.g += pixels[posIndex].g * weight[k];
+      temp.g += pixels[negIndex].g * weight[k];
 
-      output[outIdx].b += data[posIndex].b * weight[k];
-      output[outIdx].b += data[negIndex].b * weight[k];
+      temp.b += pixels[posIndex].b * weight[k];
+      temp.b += pixels[negIndex].b * weight[k];
    }
-   if( output[outIdx].r > 1 )
-      output[outIdx].r = 1;
-   if( output[outIdx].g > 1 )
-      output[outIdx].g = 1;
-   if( output[outIdx].b > 1 )
-      output[outIdx].b = 1;
+   if( temp.r > 1 )
+      temp.r = 1;
+   if( temp.g > 1 )
+      temp.g = 1;
+   if( temp.b > 1 )
+      temp.b = 1;
+   output[outIdx] = temp;
    //      }
    //   }
 }
@@ -350,15 +361,17 @@ int rasterize( BasicModel &mesh, Tga &file )
    cudaEventDestroy(start1);
    cudaEventDestroy(stop1);
 
-   dim3 dimBlock2(INIT_WIDTH, INIT_WIDTH);
-   dim3 dimGrid2((height / INIT_WIDTH) + 1, (width / INIT_WIDTH) + 1);
+   dim3 dimBlock2(SHARED_TILE);
+   dim3 dimGrid2((width / (SHARED_TILE)) + 1, height);
 
-   CUDA_SAFE_CALL(cudaMalloc((void **) &d_buff, sizeof(pixel) * width * height)); 
+   dim3 dimGrid3((height / (SHARED_TILE)) + 1, width);
 
-   for( int i = 0; i < 100; i++ )
+   CUDA_SAFE_CALL(cudaMalloc((void **) &d_buff, sizeof(pixel) * width * height));
+
+   for( int i = 0; i < 0; i++ )
    {
       blurHor<<<dimGrid2, dimBlock2>>>( d_data, d_buff, width, height );
-      blurHor<<<dimGrid2, dimBlock2>>>( d_buff, d_data, height, width );
+      blurHor<<<dimGrid3, dimBlock2>>>( d_buff, d_data, height, width );
    }
 
    CUDASAFECALL(cudaMemcpy( data, d_data, sizeof(pixel) * width * height, cudaMemcpyDeviceToHost ));

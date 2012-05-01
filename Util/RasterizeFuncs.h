@@ -11,7 +11,8 @@
 #define RASTERIZEFUNCS_H
 
 #define TILE_WIDTH 128 
-#define INIT_WIDTH 16
+#define INIT_WIDTH 16 
+#define SHARED_TILE 32
 
 #include <sys/types.h>
 #include <unistd.h>
