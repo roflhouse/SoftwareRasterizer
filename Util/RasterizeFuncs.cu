@@ -248,14 +248,17 @@ __global__ void blurVer( pixel *data, pixel *output, int width, int height )
 }
 int rasterize( BasicModel &mesh, Tga &file )
 {
+   cudaFuncSetCacheConfig( blurHor, cudaFuncCachePreferL1 );
    cudaEvent_t start, stop;
    cudaEventCreate(&start);
    cudaEventCreate(&stop);
    cudaEvent_t start1, stop1;
+   cudaEvent_t start2, stop2;
    cudaEventCreate(&start1);
    cudaEventCreate(&stop1);
 
-   cudaEventRecord(start, 0);
+   cudaEventCreate(&start2);
+   cudaEventCreate(&stop2);
 
    Normal light;
    light.x = 3;
@@ -283,6 +286,7 @@ int rasterize( BasicModel &mesh, Tga &file )
    unsigned int *d_mutex;
    pixel *d_data;
    pixel *d_buff;
+   cudaEventRecord(start, 0);
 
    CUDASAFECALL(cudaMalloc( (void **)&d_depth, sizeof(float) * width * height ));
    CUDASAFECALL(cudaMalloc( (void **)&d_vert, sizeof(Vertex) * mesh.Vertices.size() ));
@@ -330,29 +334,7 @@ int rasterize( BasicModel &mesh, Tga &file )
    CUDAERRORCHECK();
 
    cudaEventRecord(stop1, 0);
-
-   printf("Ending Kernel\n");
-   cudaFree( d_vert );
-   cudaFree( d_tri );
-   cudaFree( d_box );
-   cudaFree( d_color );
-   cudaFree( d_mutex );
-   cudaFree( d_depth );
-
-   cudaEventRecord(stop, 0);
-   cudaEventSynchronize(stop);
-
-   float elapsedTime;
-   cudaEventElapsedTime(&elapsedTime, start, stop);
-   printf("Cuda Time: %f\n", elapsedTime);
-
-   cudaEventElapsedTime(&elapsedTime, start1, stop1);
-   printf("Cuda Time (no memcpy): %f\n", elapsedTime);
-
-   cudaEventDestroy(start);
-   cudaEventDestroy(stop);
-   cudaEventDestroy(start1);
-   cudaEventDestroy(stop1);
+   cudaEventRecord(start2, 0);
 
    dim3 dimBlock2(INIT_WIDTH, INIT_WIDTH);
    dim3 dimGrid2((height / INIT_WIDTH) + 1, (width / INIT_WIDTH) + 1);
@@ -366,7 +348,35 @@ int rasterize( BasicModel &mesh, Tga &file )
    }
 
    CUDASAFECALL(cudaMemcpy( data, d_data, sizeof(pixel) * width * height, cudaMemcpyDeviceToHost ));
+   cudaEventRecord(stop2, 0);
+
+   printf("Ending Kernel\n");
+   cudaFree( d_vert );
+   cudaFree( d_tri );
+   cudaFree( d_box );
+   cudaFree( d_color );
+   cudaFree( d_mutex );
+   cudaFree( d_depth );
    cudaFree( d_data );
    cudaFree( d_buff );
+
+   cudaEventRecord(stop, 0);
+   cudaEventSynchronize(stop);
+
+   float elapsedTime;
+   cudaEventElapsedTime(&elapsedTime, start, stop);
+   printf("Cuda Time: %f\n", elapsedTime);
+
+   cudaEventElapsedTime(&elapsedTime, start1, stop1);
+   printf("Cuda Time rasterize: %f\n", elapsedTime);
+
+   cudaEventElapsedTime(&elapsedTime, start2, stop2);
+   printf("Cuda Time Blur: %f\n", elapsedTime);
+
+   cudaEventDestroy(start);
+   cudaEventDestroy(stop);
+   cudaEventDestroy(start1);
+   cudaEventDestroy(stop1);
+
    return 0;
 }
