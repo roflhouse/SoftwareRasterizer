@@ -88,29 +88,32 @@ __global__ void rasterizeCUDA_Dev( int width, int height, int offx, int offy, in
          continue;
 
       float depthTemp = a.z * alpha + b.z * beta + c.z *gamma;
-      pix.r = a_c.r*alpha + b_c.r*beta + c_c.r*gamma;
-      pix.g = a_c.g*alpha + b_c.g*beta + c_c.g*gamma;
-      pix.b = a_c.b*alpha + b_c.b*beta + c_c.b*gamma;
-      /*for( int h = 0; h < TILE_WIDTH; h++ )
-        {
-        if( threadIdx.x == h )
-        {
-        while( !atomicInc( &(mutex[(i+offy)*width + j + offx]), 1) ) {};
-        }
-        __threadfence();
-        __syncthreads();
-        }
-       */
-      if( depthTemp > depth[(i+offy)*width + j+offx] )
+      if( depthTemp > depth[(i+offy)*width + j + offx] )
       {
-         while( !atomicInc( &(mutex[(i+offy)*width +j + offx]), 1) ) {};
+         pix.r = a_c.r*alpha + b_c.r*beta + c_c.r*gamma;
+         pix.g = a_c.g*alpha + b_c.g*beta + c_c.g*gamma;
+         pix.b = a_c.b*alpha + b_c.b*beta + c_c.b*gamma;
+      }
+         /*for( int h = 0; h < TILE_WIDTH; h++ )
+           {
+           if( threadIdx.x == h )
+           {
+           while( !atomicInc( &(mutex[(i+offy)*width + j + offx]), 1) ) {};
+           }
+           __threadfence();
+           __syncthreads();
+           }
+          */
          if( depthTemp > depth[(i+offy)*width + j+offx] )
          {
-            depth[(i+offy)*width + j + offx ] = depthTemp;
-            data[(i+offy)*width + j + offx] = pix;
+            while( !atomicInc( &(mutex[(i+offy)*width +j + offx]), 1) ) {};
+            if( depthTemp > depth[(i+offy)*width + j+offx] )
+            {
+               depth[(i+offy)*width + j + offx ] = depthTemp;
+               data[(i+offy)*width + j + offx] = pix;
+            }
+            atomicDec( &(mutex[(i+offy)*width + j +offx]), 0 );
          }
-         atomicDec( &(mutex[(i+offy)*width + j +offx]), 0 );
-      }
    }
 }
 __global__ void initData( pixel *data, float *depth, int width, int height ){
@@ -333,7 +336,7 @@ int rasterize( BasicModel &mesh, Tga &file )
    CUDA_SAFE_CALL(cudaMalloc((void **) &d_buff, sizeof(pixel) * width * height));
 
    cudaEventRecord(start2, 0);
-   for( int i = 0; i < 0; i++ )
+   for( int i = 0; i < 100; i++ )
    {
       blurHor<<<dimGrid2, dimBlock2>>>( d_data, d_buff, width, height );
       blurHor<<<dimGrid2, dimBlock2>>>( d_buff, d_data, height, width );
