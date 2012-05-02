@@ -94,26 +94,26 @@ __global__ void rasterizeCUDA_Dev( int width, int height, int offx, int offy, in
          pix.g = a_c.g*alpha + b_c.g*beta + c_c.g*gamma;
          pix.b = a_c.b*alpha + b_c.b*beta + c_c.b*gamma;
       }
-         /*for( int h = 0; h < TILE_WIDTH; h++ )
-           {
-           if( threadIdx.x == h )
-           {
-           while( !atomicInc( &(mutex[(i+offy)*width + j + offx]), 1) ) {};
-           }
-           __threadfence();
-           __syncthreads();
-           }
-          */
+      /*for( int h = 0; h < TILE_WIDTH; h++ )
+        {
+        if( threadIdx.x == h )
+        {
+        while( !atomicInc( &(mutex[(i+offy)*width + j + offx]), 1) ) {};
+        }
+        __threadfence();
+        __syncthreads();
+        }
+       */
+      if( depthTemp > depth[(i+offy)*width + j+offx] )
+      {
+         while( !atomicInc( &(mutex[(i+offy)*width +j + offx]), 1) ) {};
          if( depthTemp > depth[(i+offy)*width + j+offx] )
          {
-            while( !atomicInc( &(mutex[(i+offy)*width +j + offx]), 1) ) {};
-            if( depthTemp > depth[(i+offy)*width + j+offx] )
-            {
-               depth[(i+offy)*width + j + offx ] = depthTemp;
-               data[(i+offy)*width + j + offx] = pix;
-            }
-            atomicDec( &(mutex[(i+offy)*width + j +offx]), 0 );
+            depth[(i+offy)*width + j + offx ] = depthTemp;
+            data[(i+offy)*width + j + offx] = pix;
          }
+         atomicDec( &(mutex[(i+offy)*width + j +offx]), 0 );
+      }
    }
 }
 __global__ void initData( pixel *data, float *depth, int width, int height ){
@@ -144,14 +144,10 @@ __global__ void blurHor( pixel *data, pixel *output, int width, int height )
    if (j >= width || i >= height)
       return;
 
-   pixels[threadIdx.x + 4][threadIdx.y] = data[i*width + j];
-   if( threadIdx.x < 4 && i*width + j -4 > 0 )
+   pixels[threadIdx.x][threadIdx.y] = data[i*width + j-4];
+   if(threadIdx.x > blockDim.x -9 && threadIdx.x+8 < INIT_WIDTH*INIT_WIDTH +8 )
    {
-      pixels[threadIdx.x][threadIdx.y] = data[i*width + j -4];
-   }
-   else if(threadIdx.x > blockDim.x -5 && threadIdx.x+8 < INIT_WIDTH*INIT_WIDTH +8 )
-   {
-      pixels[threadIdx.x+8][threadIdx.y] = data[i*width + j + 4];
+      pixels[threadIdx.x+8][threadIdx.y] = data[i*width + j+4];
    }
 
    __syncthreads();
@@ -189,9 +185,7 @@ __global__ void blurHor( pixel *data, pixel *output, int width, int height )
    if( temp.b > 1 )
       temp.b = 1;
    output[outIdx] = temp;
-   //      }
-   //   }
-   }
+}
 __global__ void blurVer( pixel *data, pixel *output, int width, int height )
 {
    double weight[5];
