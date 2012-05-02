@@ -1,25 +1,16 @@
 Nick Feeney(ndfeeney) 
 Andrew Guenther(aguenthe)
 
-Tests run from sshed Lab machines
+Time CPU:
+Blur: 45704.238281
 
-timing for CPU run 1 bunny 2000x2000
-real  0m2.104s
-user  0m1.084s
-sys   0m0.181s
+real  0m48.824s
+user  0m46.226s
+sys   0m0.236s
 
-timing for CPU run 25 bunny 2000x2000
-real  0m3.816s
-user  0m2.715s
-sys   0m0.164s
+Time GPU:
+Blur Time: 1033.418823
 
-timing for GPU run 25 bunny 2000x2000
-Cuda Time: 263.302094
-Cuda Time (excluding memcpy): 238.622177
-
-real  0m4.793s
-user  0m0.881s
-sys   0m0.251s
-
-CPU v. GPU error per pixel
-0.08859532679738562%
+real  0m2.976s
+user  0m1.722s
+sys   0m0.231s
