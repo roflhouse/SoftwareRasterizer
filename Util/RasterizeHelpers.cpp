@@ -119,10 +119,10 @@ Vertex *convertVertices( BasicModel &mesh, int width, int height )
    Vertex *verts = (Vertex *) malloc(sizeof(Vertex) * mesh.Vertices.size());
    std::vector<Vector3 *>::iterator it;
    int i = 0;
-   glm::mat4 transform = glm::scale( glm::mat4(1.0f), glm::vec3( 2.7,2.7, 0) );
+   glm::mat4 transform = glm::scale( glm::mat4(1.0f), glm::vec3( 10, 10, 0) );
    glm::vec4 cent = glm::vec4( (float)-mesh.center.x, (float)-mesh.center.y, 0.0, 1.0 );
    transform = glm::translate( transform, glm::vec3( cent[0], cent[1], 0 ) );
-   transform = glm::translate( transform, glm::vec3( -0.3, -0.3, 0 ) );
+//   transform = glm::translate( transform, glm::vec3( -0.3, -0.3, 0 ) );
    //glm::mat4 transform = glm::mat4(1.0f);
 
    for( it = mesh.Vertices.begin(); it < mesh.Vertices.end(); it++ )

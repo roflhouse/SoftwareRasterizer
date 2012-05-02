@@ -312,14 +312,8 @@ int rasterize( BasicModel &mesh, Tga &file )
 
    printf("Starting Kernel\n");
    cudaEventRecord(start1, 0);
-   for( int i = 0; i < 5; ++i )
-   {
-      for( int j = 0; j < 5; ++j )
-      {
-         rasterizeCUDA_Dev<<< dimGrid, dimBlock >>>(width, height, width/5 * i, height/5 * j, tris,
+         rasterizeCUDA_Dev<<< dimGrid, dimBlock >>>(width, height, 0, 0, tris,
                d_data, d_vert, d_tri, d_box, d_color, d_depth, d_mutex );
-      }
-   }
    CUDAERRORCHECK();
 
    cudaEventRecord(stop1, 0);
